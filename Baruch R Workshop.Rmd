@@ -2,15 +2,8 @@
 title: "Introduction to R"
 author: "Markus Loecher, Berlin School of Economics and Law"
 output:
-   html_document:
+   md_document:
     #variant: markdown_github
-    toc: true
-    #number_sections: true
-    self_contained: no
-    toc_depth: 2
-    toc_float: true
-    fig_caption: true
-    
 ---
 
 # About this workshop
