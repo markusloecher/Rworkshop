@@ -4,7 +4,7 @@ About this workshop
 Goals
 -----
 
-This 2.5 day workshop is intended to leave participants up and running with R statistical software. It is an attempt to provide the solid foundation needed to begin using R in your data analysis and statistical needs. No previous experience is required, though some basic programming or data science experience is helpful.
+This 2.5 day workshop is intended to leave participants up and running with the R statistical software. It is an attempt to provide the solid foundation needed to begin using R in your data analysis and statistical needs. No previous experience is required, though some basic programming or data science experience is helpful.
 
 Agenda
 ------
