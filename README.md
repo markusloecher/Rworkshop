@@ -64,7 +64,7 @@ You should install the [R](https://cran.r-project.org/) language and its popular
 ### Required libraries
 
 ``` r
-install.packages(c("knitr", "markdown", "rmarkdown","ggplot2","leaflet", "dygraphs","ggmap", "RgoogleMaps"))
+install.packages(c("knitr", "markdown", "rmarkdown","ggplot2","leaflet", "dygraphs","ggmap", "RgoogleMaps", "swirl"))
 ```
 
 ### Data sets
