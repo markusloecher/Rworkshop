@@ -57,7 +57,9 @@ If time permits, We will
 How you should prepare
 ======================
 
-The workshop will contain plenty of hands-on, interactive explorations of real data sets with relevant spatial and temporal information. While not strictly required, a basic familiarity with the *R* language and its popular IDE *RStudio* will be helpful.
+The workshop will contain plenty of hands-on, interactive explorations of real data sets with relevant spatial and temporal information. 
+
+You should install the [R](https://cran.r-project.org/) language and its popular IDE [RStudio](https://www.rstudio.com/products/rstudio/download/) prior.
 
 ### Required libraries
 
