@@ -50,7 +50,7 @@ When you start RStudio you should see 3 panels, one of them the *Console* where 
 
 ``` r
 #mandatory
-install.packages(c("knitr", "markdown", "rmarkdown","ggplot2", "dplyr","swirl", "RgoogleMaps", "nycflights13", "stringr", "ISLR"), dependencies = TRUE)
+install.packages(c("knitr", "markdown", "rmarkdown","ggplot2", "dplyr","swirl", "RgoogleMaps", "nycflights13", "stringr", "ISLR", "tseries"), dependencies = TRUE)
 #nice-to-have
 install.packages(c("dygraphs", "AER", "plm"), dependencies = TRUE)
 ```
