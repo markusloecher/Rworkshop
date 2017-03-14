@@ -4,7 +4,7 @@ About this workshop
 Goals
 -----
 
-This 2.5 day workshop is intended to leave participants up and running with R statistical software. It is an attempt to provide the solid foundation needed to begin using R in your data analysis and statistical needs. No previous experience is required, though some basic programming or data science experience is helpful.
+This 2.5 day workshop is intended to leave participants up and running with the R statistical software. It is an attempt to provide the solid foundation needed to begin using R in your data analysis and statistical needs. No previous experience is required, though some basic programming or data science experience is helpful.
 
 Agenda
 ------
@@ -15,56 +15,51 @@ Agenda
 -   control structures (for, if else, while)
 -   functions, R markdown
 -   basic plotting
--   regression and probability distributions
--   hypothesis tests
+-   computing with probabilities and distributions
 
 ### Day 2: Intermediate and advanced R programming topics
 
+-   Performing descriptive statistics
+-   Basic statistical tests (t-tests, single regression, correlation, ANOVA, logistic regression)
+-   data manipulation
 -   Data visualization with ggplot2
+
+### Day 3 Specialized Topics (optional half-day):
+
+Options:
+
 -   Packages for faster data manipulation (dplyr, data.table)
+-   Panel data
 -   Interactive javscript based plots
 -   time series
-
-### Day 3 (optional half-day):
-
--   Maps in R
+-   Logistic regression
+-   trees
 
 ------------------------------------------------------------------------
 
-Statistics with R
------------------
-
-![](figs/BinomialShiny1.png)
-
-Time Series Analysis
---------------------
-
-![](figs/GlobalTemperatures.png)
-
-Maps in R
----------
-
-![](figs/MapsCollage.png)
-
-Interactive
------------
-
-If time permits, We will
-
--   cover dynamic map mashups that allow zoom and pan operations, in particular the packages *leaflet* and *plotGoogleMaps*.
--   introduce a spatial hotspot detection tool based on classification trees and generalized additive models.
-
 How you should prepare
-======================
+----------------------
 
-The workshop will contain plenty of hands-on, interactive explorations of real data sets with relevant spatial and temporal information. 
+The workshop will contain plenty of hands-on, interactive explorations of real data sets with relevant spatial and temporal information.
 
 You should install the [R](https://cran.r-project.org/) language and its popular IDE [RStudio](https://www.rstudio.com/products/rstudio/download/) prior.
 
 ### Required libraries
 
+When you start RStudio you should see 3 panels, one of them the *Console* where you can type commands.
+
 ``` r
-install.packages(c("knitr", "markdown", "rmarkdown","ggplot2","leaflet", "dygraphs","ggmap", "RgoogleMaps", "swirl"))
+#mandatory
+install.packages(c("knitr", "markdown", "rmarkdown","ggplot2", "dplyr","swirl", "RgoogleMaps", "nycflights13", "stringr", "ISLR"), dependencies = TRUE)
+#nice-to-have
+install.packages(c("dygraphs" "AER", "plm"), dependencies = TRUE)
+```
+
+After this, load the swirl library and install our course:
+
+``` r
+library(swirl)
+install_course_github("markusloecher", "Rworkshop/Baruch_day1")
 ```
 
 ### Data sets

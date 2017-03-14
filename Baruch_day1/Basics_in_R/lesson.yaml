@@ -1,0 +1,182 @@
+- Class: meta
+  Course: DataScience
+  Lesson: Basics in R
+  Author: Markus Loecher
+  Type: Standard
+  Organization: Berlin School of Economics and Law
+  Version: 1.0.0
+
+#regular expression reminder:
+#gsub("equivalent=(.+)","omnitest(\\1)","equivalent=mean(Auto$mpg)")
+#gsub("omnitest((.+))","omnitest(correctExpr='\\1')","omnitest(dim(Auto))")
+#gsub("omnitest\\((.+)\\)","omnitest(correctExpr='\\1')","omnitest(dim(Auto))")
+
+
+- Class: text
+  Output: Today, I'll be teaching you the basics of data analysis in R. The Auto dataset from the ISLR package is already loaded
+  
+- Class: cmd_question
+  Output: How many columns and rows does the 'Auto' dataset have?
+  CorrectAnswer: dim(Auto)
+  AnswerTests: omnitest(correctExpr='dim(Auto)')
+  Hint: Think of the word 'dimension'.
+  
+- Class: cmd_question
+  Output: Open the 'Auto' dataset in a viewer in RStudio.
+  CorrectAnswer: View(Auto)
+  AnswerTests: omnitest(correctExpr='View(Auto)')
+  Hint: Think of the word 'View'.
+  
+  
+- Class: cmd_question
+  Output: Compute the mean mpg of the 'Auto' dataset.
+  CorrectAnswer: mean(Auto$mpg)
+  AnswerTests: omnitest(correctExpr='mean(Auto$mpg)')
+  Hint: The command is 'mean' and the '$' notation will be helpful.
+  
+- Class: cmd_question
+  Output: Plot the distribution of mpg of the 'Auto' dataset.
+  CorrectAnswer: hist(Auto$mpg)
+  AnswerTests: omnitest(correctExpr='hist(Auto$mpg)')
+  Hint: The command is 'hist' and the '$' notation will be helpful.  
+
+- Class: cmd_question
+  Output:  There are functions that (i) never and some that (ii) always return "sth." (values, objects, ...). There is a third type of function in R which only returns sth. to the user if "asked for", i.e. if one calls it by assigning the output to a variable, e.g. 'myHistogram <- hist(1:100)'. Repeat the hist command from above but this time 'catch' (assign) the returned data to an object 'hb'.
+  CorrectAnswer: hb <- hist(Auto$mpg)
+  AnswerTests: omnitest(correctExpr='hb <- hist(Auto$mpg)')
+  Hint: The command is 'hist' and the '$' notation will be helpful. Use the assignment operator.  
+
+- Class: cmd_question
+  Output: Inspect the returned object 'hb'.
+  CorrectAnswer: hb
+  AnswerTests: omnitest(correctExpr='hb')
+  Hint: JUST TYPE hb!!!  
+  
+    
+- Class: text
+  Output: The object 'hb' is the most general/flexible data structure which R has to offer. Using the '$' notation (again), every named entry is its own data object which can be a vector of numbers, strings, matrices, etc.. For example, 'hb$mids' contains the mid points and 'hb$breaks' the boundaries of the histogram bars.
+  
+# - Class: exact_question
+#   Output: By looking at the hb object, how many cars have mpg between 15 and 20?
+#   CorrectAnswer: '91'
+#   AnswerTests: exact=91
+#   Hint: Check out the 'slot' hb$counts and remember that a fence always has one more post than boards.
+
+- Class: cmd_question
+  Output: By looking at the hb object, how many cars have mpg between 15 and 20?
+  CorrectAnswer: hb$counts[3]
+  AnswerTests: omnitest(correctExpr='hb$counts[3]')
+  Hint: Check out the 'slot' hb$counts and remember that a fence always has one more post than boards.
+
+
+- Class: cmd_question #10
+  Output: Add an outlier (in this case a data typo) to the variable/column mpg by swapping the digits of the 17th entry, i.e. change the 17th element from '18' to '81'. 
+  CorrectAnswer: Auto$mpg[17] <- 81
+  AnswerTests: omnitest(correctExpr='Auto$mpg[17] <- 81')
+  Hint: Use the [i] notation to access the i-th element. Use the assignment operator <- .  
+
+- Class: cmd_question #11
+  Output: Repeat the histogram creation with this outlier 
+  CorrectAnswer: hb <- hist(Auto$mpg)
+  AnswerTests: omnitest(correctExpr='hb <- hist(Auto$mpg)')
+  Hint: do not forget the assignment hb <- hist... (are you for real)? 
+
+- Class: cmd_question #12
+  Output: Inspect the returned object 'hb' again and discuss the impact of the outlier on the efficiency of the binning process.
+  CorrectAnswer: hb
+  AnswerTests: omnitest(correctExpr='hb')
+  Hint: JUST TYPE hb!!!  
+
+- Class: cmd_question #13
+  Output: Look at the help for the extremely useful 'aggregate' function
+  CorrectAnswer: ?aggregate
+  AnswerTests: omnitest(correctExpr='?aggregate')
+  Hint: Use the question mark. 
+  
+- Class: cmd_question #14
+  Output: Use the formula interface for 'aggregate' to compute the average mpgs separately for the different cylinder numbers.
+  CorrectAnswer: aggregate(mpg ~ cylinders, data = Auto, FUN = mean)
+  AnswerTests: omnitest(correctExpr='aggregate(mpg ~ cylinders, data = Auto, FUN = mean)')
+  Hint: By formula I mean mpg ~ cylinders.  
+ 
+####### question 15 ###############################
+
+- Class: cmd_question #15
+  Output: There are many ways to achieve a task. One of the strengths of R is the number of useful extra libraries called packages that the user community has contributed. A particularly powerful set of packages for data manipulation and plotting comes from the RStudio folks around Hadley Wickham. One alternative to the base R aggregate function would be the combination of summarise/group_by from the package dplyr. Look at the help page for group_by.
+  CorrectAnswer: ?group_by
+  AnswerTests: omnitest(correctExpr='?group_by')
+  Hint: ?group_by.  
+
+- Class: cmd_question #16
+  Output: One of the advantages of the dplyr summarise function is the ease of computing multiple summary stats simultaneously. In one line, compute the average mpgs AND the number of entries separately for the different cylinder numbers.
+  CorrectAnswer: summarise(group_by(Auto, cylinders), mean(mpg), length(mpg))
+  AnswerTests: omnitest(correctExpr='summarise(group_by(Auto, cylinders), mean(mpg), length(mpg))')
+  Hint: Use the function length(), summarise(group_by(Auto, cylinders), mean(mpg), length(mpg)).  
+
+- Class: text # 17
+  Output: Discuss with your peers (i) why "sample size" could be an appropriate name for the length column, and (ii) what confidence you should assign to the avg. mpg for the rare cylinder numbers 3 and 5.
+
+- Class: cmd_question #18
+  Output: It seems clear by now that there is a dependency of fuel efficiency and number of cylinders; certainly in terms of average mpg. What about the "spread", i.e. the variations around the mean ? Without claiming statistical rigor, we can certainly visualize that variation easily using a simple scatter plot. Try the simple plot() function with the "mpg ~ cylinders" formula.
+  CorrectAnswer: plot(mpg ~ cylinders, data = Auto)
+  AnswerTests: omnitest(correctExpr='plot(mpg ~ cylinders, data = Auto)')
+  Hint: Use the plot function in combination with the formula operator, plot(mpg ~ cylinders, data = Auto).
+  
+- Class: text # 19
+  Output: Discuss with your peers the shortcomings of such a plot, in terms of visual appeal, strength of possible conclusions and hidden information. What simple fixes (e.g. in terms of color, plotting symbols, etc.) could improve this plot? 
+
+- Class: cmd_question #20
+  Output: Scatter plots are typically used to visualize relationships between two continuous, metric variables. For example, create another scatter plot of mpg ~ weight. This time, add the parameters "col = rgb(0,0,1,0.5), pch=20" (Note2Self- play with size of plotting symbols, titles and background grid in your free time)
+  CorrectAnswer: plot(mpg ~ weight, data = Auto,col = rgb(0,0,1,0.5), pch=20)
+  AnswerTests: omnitest(correctExpr='plot(mpg ~ weight, data = Auto,col = rgb(0,0,1,0.5), pch=20)')
+  Hint: plot(mpg ~ weight, data = Auto,col = rgb(0,0,1,0.5), pch=20)
+  
+#boxplots
+- Class: text # text_question #mult_question #21
+  Output: Convince yourself that the variable 'cylinders' is quite different from 'weight' in it being very "discrete" and assuming just a handful of "levels". In  fact, I would claim that graphically we should treat it more like a categorical variable than a metric one. Ponder the concept of a categorical (often called "nominal") variable for a bit and tell me which of the following you would consider to be of that type. year;brand;horsepower;number of doors
+#  AnswerChoices: year;brand;horsepower;number of doors
+#  CorrectAnswer: brand
+#  AnswerTests: omnitest(correctExpr='brand')
+#  Hint: brand is the only nominal variable().
+
+#boxplots
+- Class: cmd_question #22
+  Output: In a typical data analysis project we find ourselves in the "continuous ~ categorical variable" situation quite often. Discuss with your peers what kind of a plot would be more appropriate than e.g. a scatter plot. Look at the help for the immensely helpful graphics function 'boxplot' function (Note2Self- shocking that Excel does not offer a built-in boxplot function)
+  CorrectAnswer: ?boxplot
+  AnswerTests: omnitest(correctExpr='?boxplot')
+  Hint: Use the question mark.
+
+- Class: cmd_question #23
+  Output: Generate a simple boxplot mpg versus cylinders. As boxplot is one of those functions with optional returns, begin the command with 'bp <- boxplot...'
+  CorrectAnswer: bp <- boxplot(mpg ~ cylinders, data = Auto)
+  AnswerTests: omnitest(correctExpr='bp <- boxplot(mpg ~ cylinders, data = Auto)')
+  Hint: bp <- boxplot(mpg ~ cylinders, data = Auto)
+
+- Class: cmd_question #24
+  Output: Inspect the object bp
+  CorrectAnswer: bp
+  AnswerTests: omnitest(correctExpr='bp')
+  Hint: are you for real? JUST TYPE bp
+  
+# - Class: exact_question #25
+#   Output: By looking at the bp object, what is the 'upper hinge' for mpg for cars with 4 cylinders?
+#   CorrectAnswer: '32.95' #bp$stats[4,2]
+#   AnswerTests: exact=32.95
+#   Hint: Check out the help page of boxplot.stats, bp$stats[4,2].  
+
+- Class: cmd_question #25
+  Output: By looking at the bp object, what is the 'upper hinge' for mpg for cars with 4 cylinders?
+  CorrectAnswer: bp$stats[4,2]
+  AnswerTests: omnitest(correctExpr='bp$stats[4,2]')
+  Hint: Check out the help page of boxplot.stats, bp$stats[4,2].  
+
+#ggplot boxplots: 
+#ggplot(Auto, aes(x=factor(cylinders), y=mpg)) + geom_boxplot()
+#ggplot(Auto, aes(x=weight, y=mpg)) + geom_point()
+#ggplot(Auto, aes(x=weight, y=mpg)) + geom_point(aes(colour=horsepower))
+#http://docs.ggplot2.org/0.9.3.1/geom_point.html
+
+#install_course_dropbox("https://www.dropbox.com/s/x16vdu1olk3pfva/BSEL_DataScience.zip?dl=0")
+
+#quantiles
+
