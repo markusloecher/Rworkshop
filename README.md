@@ -59,7 +59,7 @@ I would decline the compilation from source.
 
 Be prepared to wait a while, lots of dependent packages are being installed as well.
 
-[](figs/InstallPckgs.png)
+![](figs/InstallPckgs.png)
 
 Now download the swirl course *Baruch\_day1.zip* to a directory on your computer.
 
@@ -70,7 +70,7 @@ library(swirl)
 install_course_zip(file.choose())
 ```
 
-### Data sets
+### Download the data sets from github
 
 -   [Titanic](data/TitanicTrain.csv)
 -   [Global Temperature](data/global.dat)
