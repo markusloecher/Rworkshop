@@ -52,14 +52,22 @@ When you start RStudio you should see 3 panels, one of them the *Console* where 
 #mandatory
 install.packages(c("knitr", "markdown", "rmarkdown","ggplot2", "dplyr","swirl", "RgoogleMaps", "nycflights13", "stringr", "ISLR"), dependencies = TRUE)
 #nice-to-have
-install.packages(c("dygraphs" "AER", "plm"), dependencies = TRUE)
+install.packages(c("dygraphs", "AER", "plm"), dependencies = TRUE)
 ```
 
-After this, load the swirl library and install our course:
+I would decline the compilation from source.
+
+Be prepared to wait a while, lots of dependent packages are being installed as well.
+
+[](figs/InstallPckgs.png)
+
+Now download the swirl course *Baruch\_day1.zip* to a directory on your computer.
+
+After this, load the swirl library and install this course:
 
 ``` r
 library(swirl)
-install_course_github("markusloecher", "Rworkshop/Baruch_day1")
+install_course_zip(file.choose())
 ```
 
 ### Data sets
