@@ -1,0 +1,358 @@
+---
+title: "Day 3: Miscellaneous Topics"
+author: "Markus Loecher, Berlin School of Economics and Law"
+output:
+   html_document:
+    #variant: markdown_github
+    toc: true
+    number_sections: true
+    self_contained: no
+    toc_depth: 2
+    toc_float: true
+    fig_caption: true
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Logistic Regression with the Stock Market Data
+
+```{r}
+library(ISLR)
+names(Smarket)
+#dim(Smarket)
+#summary(Smarket)
+#pairs(Smarket)
+#cor(Smarket)
+#cor(Smarket[,-9])
+attach(Smarket)
+plot(Volume, type="l", col = "brown");grid()
+```
+
+we will fit a logistic regression model in order to predict Direction
+using Lag1 through Lag5 and Volume.
+
+But we need to be careful: the *training error rate* is often overly optimistic-it
+tends to underestimate the test error rate. In order to better assess the accuracy
+of the logistic regression model in this setting, we can fit the model
+using part of the data, and then examine how well it predicts the held out
+data. This will yield a more realistic error rate, in the sense that in practice
+we will be interested in our model's performance not on the data that
+we used to fit the model, but rather on days in the future for which the
+market's movements are unknown.
+
+To implement this strategy, we will first create a vector corresponding
+to the observations from 2001 through 2004. We will then use this vector
+to create a held out data set of observations from 2005.
+
+```{r}
+
+train=(Year<2005)
+Smarket.2005=Smarket[!train,]
+dim(Smarket.2005)
+Direction.2005=Direction[!train]
+```
+
+
+The object train is a vector of 1, 250 elements, corresponding to the observations
+in our data set. The elements of the vector that correspond to
+observations that occurred before 2005 are set to `TRUE`, whereas those that
+correspond to observations in 2005 are set to `FALSE`. The object train is
+a **Boolean** vector, since its elements are TRUE and `FALSE`.
+
+
+We now fit a logistic regression model using only the subset of the observations
+that correspond to dates before 2005, using the subset argument.
+We then obtain predicted probabilities of the stock market going up for
+each of the days in our test set-that is, for the days in 2005.
+
+```{r}
+
+glm.fit=glm(Direction~Lag1+Lag2+Lag3+Lag4+Lag5+Volume,data=Smarket,family=binomial,subset=train)
+glm.probs=predict(glm.fit,Smarket.2005,type="response")
+```
+
+Notice that we have trained and tested our model on two completely separate
+data sets: training was performed using only the dates before 2005,
+and testing was performed using only the dates in 2005. Finally, we compute
+the predictions for 2005 and compare them to the actual movements
+of the market over that time period.
+
+```{r}
+
+glm.pred=rep("Down",252)
+glm.pred[glm.probs>.5]="Up"
+table(glm.pred,Direction.2005)
+mean(glm.pred==Direction.2005)
+mean(glm.pred!=Direction.2005)
+```
+
+The != notation means not equal to, and so the last command computes
+the test set error rate. The results are rather disappointing: the test error
+rate is 52 %, which is worse than random guessing! Of course this result
+is not all that surprising, given that one would not generally expect to be
+able to use previous days' returns to predict future market performance.
+(After all, if it were possible to do so, then the authors of this book would
+be out striking it rich rather than writing a statistics textbook.)
+
+
+We recall that the logistic regression model had very underwhelming pvalues
+associated with all of the predictors, and that the smallest p-value,
+though not very small, corresponded to Lag1. Perhaps by removing the
+variables that appear not to be helpful in predicting Direction, we can
+obtain a more effective model. After all, using predictors that have no
+relationship with the response tends to cause a deterioration in the test
+error rate (since such predictors cause an increase in variance without a
+corresponding decrease in bias), and so removing such predictors may in
+turn yield an improvement. Below we have refit the logistic regression using
+just `Lag1` and `Lag2`, which seemed to have the highest predictive power in
+the original logistic regression model.
+
+```{r}
+
+glm.fit=glm(Direction~Lag1+Lag2,data=Smarket,family=binomial,subset=train)
+glm.probs=predict(glm.fit,Smarket.2005,type="response")
+glm.pred=rep("Down",252)
+glm.pred[glm.probs>.5]="Up"
+table(glm.pred,Direction.2005)
+mean(glm.pred==Direction.2005)
+106/(106+76)
+predict(glm.fit,newdata=data.frame(Lag1=c(1.2,1.5),Lag2=c(1.1,-0.8)),type="response")
+```
+
+
+Now the results appear to be a little better: 56% of the daily movements
+have been correctly predicted. It is worth noting that in this case, a much
+simpler strategy of predicting that the market will increase every day will
+also be correct 56% of the time! Hence, in terms of overall error rate, the
+logistic regression method is no better than the naive approach. However,
+the confusion matrix shows that on days when logistic regression predicts
+an increase in the market, it has a 58% accuracy rate. This suggests a
+possible trading strategy of buying on days when the model predicts an increasing
+market, and avoiding trades on days when a decrease is predicted.
+Of course one would need to investigate more carefully whether this small
+improvement was real or just due to random chance.
+
+
+# Classificaton Trees
+
+
+### Titanic data
+
+Building a tree  on the Titanic survival data:
+
+```{r, echo=TRUE, fig.width=12, fig.height=10}
+train <- read.csv("data/TitanicTrain.csv")
+library(partykit, quietly = TRUE)
+train$Pclass = factor(train$Pclass)
+train$Survived = factor(train$Survived)
+
+naRows = is.na(train$Age)
+
+fit = ctree(Survived ~ Age + Sex + Pclass, data= train[!naRows,])
+plot(fit)
+```
+
+Why does the tree **not** split on passenger class 1 and 2 for female passengers ? 
+
+```{r}
+FemalePclass12 = subset(train[!naRows,], Sex =="female" & Pclass %in% 1:2)
+(ST=table(FemalePclass12$Survived, FemalePclass12$Pclass))
+x=ST["1",1:2]
+n=colSums(ST[,1:2])
+
+prop.test(x,n)
+```
+
+Why does the tree **not** split on male passengers older than 9 years and classes 2 and 3
+
+```{r}
+MalePclass23 = subset(train[!naRows,], Sex =="male" & Pclass %in% 2:3 & Age > 9)
+(ST=table(MalePclass23$Survived, MalePclass23$Pclass))
+x=ST["1",2:3]
+n=colSums(ST[,2:3])
+
+prop.test(x,n)
+```
+
+
+Somewhat hard to believe that we find a statistically significant difference in survival probability among 1st class males that are above and below age 52 !?:
+
+
+```{r}
+MalePclass1 = subset(train[!naRows,], Sex =="male" & Pclass %in% 1 )
+(ST=table(MalePclass1$Survived, MalePclass1$Age > 52))
+x=ST["1",]
+n=colSums(ST)
+
+prop.test(x,n)
+```
+
+Why is our p-value (0.01) less than the one reported by ctree (0.02) ?
+
+```{r}
+k=2
+p=0.01019
+1 - (1 - p)^k
+```
+
+
+# Time series
+
+Recall the we temperatures for the period 1970-2005.
+
+```{r }
+Global <- scan("data/global.dat")
+ Global.ts <- ts(Global, st = c(1856, 1), end = c(2005, 12),
+fr = 12)
+ Global.annual <- aggregate(Global.ts, FUN = mean)
+ plot(Global.ts);grid()
+ 
+```
+
+### Interactive Data Exploration
+
+```{r}
+library(dygraphs)
+dygraph(Global.ts) %>%  dyRangeSelector() 
+```
+
+The following regression model is fitted to the global temperature over this period, and approximate 95% confidence intervals are given for the parameters using
+confint. The explanatory variable is the time, so the function time is
+used to extract the ``times` from the `ts` temperature object.
+
+```{r}
+Last35 <- window(Global.ts, start=c(1970, 1), end=c(2005, 12))
+ Last35Yrs <- time(Last35)
+ fitAD=lm(Last35 ~ Last35Yrs)
+summary(fitAD)
+plot(Last35)
+  abline(fitAD,col=2)
+  
+  confint(fitAD)
+  
+```
+
+###  Standard Errors incorrect
+ 
+The confidence interval for the slope does not contain zero, which would provide
+statistical evidence of an increasing trend in global temperatures if the
+autocorrelation in the residuals is negligible. However, the residual series is
+positively autocorrelated at shorter lags:
+
+```{r}
+acf(resid(fitAD),  main = "Autocorrelation of residuals")
+```
+
+
+, leading to an underestimate
+of the standard error and too narrow a confidence interval for the slope.
+Intuitively, the positive correlation between consecutive values reduces the
+effective record length because similar values will tend to occur together. The
+following section illustrates the reasoning behind this but may be omitted,
+without loss of continuity, by readers who do not require the mathematical
+details.
+
+
+
+#### Generalised least squares
+
+For a positive serial correlation in the
+residual series, this implies that the standard errors of the estimated regression
+parameters are likely to be underestimated, and should
+therefore be corrected.
+A fitting procedure known as generalised least squares (GLS) can be used
+to provide better estimates of the standard errors of the regression parameters
+to account for the autocorrelation in the residual series. The procedure is
+essentially based on maximising the likelihood given the autocorrelation in
+the data and is implemented in R in the gls function (within the nlme library,
+which you will need to load).
+
+```{r}
+library(nlme)
+x.gls <- gls(Last35 ~ Last35Yrs, cor = corAR1(0.7))
+confint(x.gls)
+#par(mar=c(7,3,1,1));
+#pacf(fitAD$residuals,lag.max = 10)
+
+```
+
+
+### stochastic model
+
+
+The data exhibit an increasing trend after 1970, which may be due to
+the *greenhouse effect*. Sceptics may claim that the apparent increasing trend
+can be dismissed as a transient stochastic phenomenon. For their claim to be
+consistent with the time series data, it should be possible to model the trend
+without the use of deterministic functions.
+Consider the following AR model fitted to the mean annual temperature
+series:
+
+
+
+```{r}
+ Global.ar <- ar(Global.annual, method = "mle")
+mean(aggregate(Global.ts, FUN = mean))
+ 
+ Global.ar$ar
+ 
+ options(digits=3)
+ rbind(Global.ar$ar -2 * sqrt(diag(Global.ar$asy.var)),
+       Global.ar$ar,
+       Global.ar$ar +2 * sqrt(diag(Global.ar$asy.var)) )
+ 
+ 
+acf(Global.ar$res[-(1:Global.ar$order)], lag = 50, main = "Autocorrelation of residuals")
+```
+
+Based on the output above a predicted mean annual temperature $x_t$ at
+time t is given by
+$$
+\hat{x}_t = -0.14 + 0.59(x_{t-2} + 0.14) + 0.013(x_{t-2} + 0.14) +0.11(x_{t-3} + 0.14) + 0.27(x_{t-4} + 0.14)
+$$
+
+The correlogram of the residuals has only one (marginally) significant value
+at lag 27, so the underlying residual series could be white noise.
+Thus the fitted AR(4) model provides a good fit to the
+data. As the AR model has no deterministic trend component, the trends in
+the data can be explained by serial correlation and random variation, implying
+that it is possible that these trends are stochastic (or could arise from a purely
+stochastic process). Again we emphasise that this does not imply that there is
+no underlying reason for the trends. If a valid scientific explanation is known,
+such as a link with the increased use of fossil fuels, then this information would
+clearly need to be included in any future forecasts of the series.
+
+
+
+
+
+# Appendix
+
+## Leverage, Influence and Cook's distance
+
+
+## Autocorrelation and the estimation of sample statistics
+
+To illustrate the effect of autocorrelation in estimation, the sample mean will
+be used, as it is straightforward to analyse and is used in the calculation of
+other statistical properties.
+Suppose $x_t : t = 1, .., n$ is a time series of independent random variables
+with mean $E(x_t) = \mu$ and variance $Var(x_t) =\sigma^2$. 
+Then it is well known in the study of random samples that the sample mean 
+$\bar{x} = \sum_{t=1}^n{x_t}/n$ has mean 
+$E(\bar{x}) = \mu$ and variance $Var(\bar{x}) =\sigma^2/n$
+
+Now let $x_t : t = 1, .., n$  be a stationary time series with $E(x_t) = \mu$ and variance $Var(x_t) =\sigma^2$, and autocorrelation function $Cor(x_t, x_{t+k}) = \rho_k$. Then the variance of the
+sample mean is given by
+
+$$
+Var(\bar{x}) =\frac{\sigma^2}{n}  \left(1 + 2 \sum_{k=1}^{n-1}{(1-k/n) \rho_k} \right)
+$$
+
+## Sources
+
+1. Analysis of temperature data leans heavily on "Introductory Time Series with R", by Cowpertwait and Metcalfe.
+2. Stock market regression is taken from "An Introduction to Statistical Learning", by Gareth James, Daniela Witten, Trevor Hastie, Robert Tibshirani.

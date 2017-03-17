@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+
+
+<meta name="author" content="Markus Loecher, Berlin School of Economics and Law" />
+
+
+<title>Day 1: Basic R programming</title>
+
+<script src="Day1_files/jquery-1.11.3/jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="Day1_files/bootstrap-3.3.5/css/bootstrap.min.css" rel="stylesheet" />
+<script src="Day1_files/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="Day1_files/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="Day1_files/bootstrap-3.3.5/shim/respond.min.js"></script>
+<script src="Day1_files/jqueryui-1.11.4/jquery-ui.min.js"></script>
+<link href="Day1_files/tocify-1.9.1/jquery.tocify.css" rel="stylesheet" />
+<script src="Day1_files/tocify-1.9.1/jquery.tocify.js"></script>
+<script src="Day1_files/navigation-1.1/tabsets.js"></script>
+<link href="Day1_files/highlightjs-1.1/default.css" rel="stylesheet" />
+<script src="Day1_files/highlightjs-1.1/highlight.js"></script>
+<script src="Day1_files/htmlwidgets-0.8/htmlwidgets.js"></script>
+<link href="Day1_files/dygraphs-1.1.1/dygraph.css" rel="stylesheet" />
+<script src="Day1_files/dygraphs-1.1.1/dygraph-combined.js"></script>
+<script src="Day1_files/moment-2.8.4/moment.js"></script>
+<script src="Day1_files/moment-timezone-0.2.5/moment-timezone-with-data.js"></script>
+<script src="Day1_files/moment-fquarter-1.0.0/moment-fquarter.min.js"></script>
+<script src="Day1_files/dygraphs-binding-1.1.1.4/dygraphs.js"></script>
+
+<style type="text/css">code{white-space: pre;}</style>
+<style type="text/css">
+  pre:not([class]) {
+    background-color: white;
+  }
+</style>
+<script type="text/javascript">
+if (window.hljs && document.readyState && document.readyState === "complete") {
+   window.setTimeout(function() {
+      hljs.initHighlighting();
+   }, 0);
+}
+</script>
+
+
+
+<style type="text/css">
+h1 {
+  font-size: 34px;
+}
+h1.title {
+  font-size: 38px;
+}
+h2 {
+  font-size: 30px;
+}
+h3 {
+  font-size: 24px;
+}
+h4 {
+  font-size: 18px;
+}
+h5 {
+  font-size: 16px;
+}
+h6 {
+  font-size: 12px;
+}
+.table th:not([align]) {
+  text-align: left;
+}
+</style>
+
+
+</head>
+
+<body>
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+code {
+  color: inherit;
+  background-color: rgba(0, 0, 0, 0.04);
+}
+img {
+  max-width:100%;
+  height: auto;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+</style>
+
+
+
+<div class="container-fluid main-container">
+
+<!-- tabsets -->
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+</script>
+
+<!-- code folding -->
+
+
+
+
+<script>
+$(document).ready(function ()  {
+
+    // move toc-ignore selectors from section div to header
+    $('div.section.toc-ignore')
+        .removeClass('toc-ignore')
+        .children('h1,h2,h3,h4,h5').addClass('toc-ignore');
+
+    // establish options
+    var options = {
+      selectors: "h1,h2",
+      theme: "bootstrap3",
+      context: '.toc-content',
+      hashGenerator: function (text) {
+        return text.replace(/[.\\/?&!#<>]/g, '').replace(/\s/g, '_').toLowerCase();
+      },
+      ignoreSelector: ".toc-ignore",
+      scrollTo: 0
+    };
+    options.showAndHide = true;
+    options.smoothScroll = true;
+
+    // tocify
+    var toc = $("#TOC").tocify(options).data("toc-tocify");
+});
+</script>
+
+<style type="text/css">
+
+#TOC {
+  margin: 25px 0px 20px 0px;
+}
+@media (max-width: 768px) {
+#TOC {
+  position: relative;
+  width: 100%;
+}
+}
+
+
+.toc-content {
+  padding-left: 30px;
+  padding-right: 40px;
+}
+
+div.main-container {
+  max-width: 1200px;
+}
+
+div.tocify {
+  width: 20%;
+  max-width: 260px;
+  max-height: 85%;
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+  div.tocify {
+    width: 25%;
+  }
+}
+
+@media (max-width: 767px) {
+  div.tocify {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+.tocify ul, .tocify li {
+  line-height: 20px;
+}
+
+.tocify-subheader .tocify-item {
+  font-size: 0.90em;
+  padding-left: 25px;
+  text-indent: 0;
+}
+
+.tocify .list-group-item {
+  border-radius: 0px;
+}
+
+
+</style>
+
+<!-- setup 3col/9col grid for toc_float and main content  -->
+<div class="row-fluid">
+<div class="col-xs-12 col-sm-4 col-md-3">
+<div id="TOC" class="tocify">
+</div>
+</div>
+
+<div class="toc-content col-xs-12 col-sm-8 col-md-9">
+
+
+
+
+<div class="fluid-row" id="header">
+
+
+
+<h1 class="title toc-ignore">Day 1: Basic R programming</h1>
+<h4 class="author"><em>Markus Loecher, Berlin School of Economics and Law</em></h4>
+
+</div>
+
+
+<div id="data-types-vectors-matrices-strings-factors" class="section level1">
+<h1><span class="header-section-number">1</span> data types, vectors, matrices, strings, factors</h1>
+<p>We need to be very clear on the different <strong>data types</strong> in R!</p>
+<p><strong>numbers</strong>:</p>
+<pre class="r"><code>x = 2
+y = 3
+x+y</code></pre>
+<pre><code>## [1] 5</code></pre>
+<p><strong>vectors</strong>:</p>
+<pre class="r"><code>x = c(1,2,3)
+y = 10:12
+#or 
+y = seq(10,12,by=1)
+#operations on x
+x[2]</code></pre>
+<pre><code>## [1] 2</code></pre>
+<pre class="r"><code>x[-2]</code></pre>
+<pre><code>## [1] 1 3</code></pre>
+<pre class="r"><code>2*x</code></pre>
+<pre><code>## [1] 2 4 6</code></pre>
+<pre class="r"><code>x^2</code></pre>
+<pre><code>## [1] 1 4 9</code></pre>
+<pre class="r"><code>#built-in functions
+mean(x)</code></pre>
+<pre><code>## [1] 2</code></pre>
+<pre class="r"><code>sum(x)</code></pre>
+<pre><code>## [1] 6</code></pre>
+<pre class="r"><code>#vectorized operations
+x+y</code></pre>
+<pre><code>## [1] 11 13 15</code></pre>
+<pre class="r"><code>#bare bones graphics
+plot(x,y); grid()</code></pre>
+<p><img src="Day1_files/figure-html/unnamed-chunk-2-1.png" width="576" /></p>
+<pre class="r"><code>barplot(x); grid()</code></pre>
+<p><img src="Day1_files/figure-html/unnamed-chunk-2-2.png" width="576" /></p>
+<p><strong>matrices</strong>:</p>
+<pre class="r"><code>x = matrix(1:9, ncol=3)
+colnames(x) = c(&quot;var1&quot;,&quot;var2&quot;,&quot;var3&quot;)
+x</code></pre>
+<pre><code>##      var1 var2 var3
+## [1,]    1    4    7
+## [2,]    2    5    8
+## [3,]    3    6    9</code></pre>
+<pre class="r"><code>dim(x)</code></pre>
+<pre><code>## [1] 3 3</code></pre>
+<pre class="r"><code>x[2,3]</code></pre>
+<pre><code>## var3 
+##    8</code></pre>
+<pre class="r"><code>x[2,&quot;var1&quot;]</code></pre>
+<pre><code>## var1 
+##    2</code></pre>
+<pre class="r"><code>colMeans(x)</code></pre>
+<pre><code>## var1 var2 var3 
+##    2    5    8</code></pre>
+<p><strong>data frames</strong>:</p>
+<pre class="r"><code>x = data.frame(a = 1:3, l = LETTERS[1:3], r = runif(3))
+x</code></pre>
+<pre><code>##   a l     r
+## 1 1 A 0.588
+## 2 2 B 0.909
+## 3 3 C 0.571</code></pre>
+<pre class="r"><code>x$l</code></pre>
+<pre><code>## [1] A B C
+## Levels: A B C</code></pre>
+<p><strong>lists</strong>:</p>
+<pre class="r"><code>y = list(x = matrix(1:9, ncol=3), l = LETTERS[1:3], r = NA)
+y</code></pre>
+<pre><code>## $x
+##      [,1] [,2] [,3]
+## [1,]    1    4    7
+## [2,]    2    5    8
+## [3,]    3    6    9
+## 
+## $l
+## [1] &quot;A&quot; &quot;B&quot; &quot;C&quot;
+## 
+## $r
+## [1] NA</code></pre>
+<p><strong>strings</strong>:</p>
+<pre class="r"><code>x = &quot;chevrolet&quot;
+class(x)</code></pre>
+<pre><code>## [1] &quot;character&quot;</code></pre>
+<div id="factors-in-r" class="section level3">
+<h3><span class="header-section-number">1.0.1</span> factors in R</h3>
+<p>Try class(“chevrolet”)</p>
+<p>In the Auto set take a look at the data class of the name column:</p>
+<pre class="r"><code>library(ISLR)
+data(Auto)
+
+class(Auto$name)</code></pre>
+<pre><code>## [1] &quot;factor&quot;</code></pre>
+<p>Try</p>
+<p>as.numeric(“chevrolet”)</p>
+<p>Try</p>
+<p>as.numeric(head(Auto$name))</p>
+<p>Look at the help file for read.csv and look for the argument <em>stringsAsFactors</em></p>
+<p>You can force a variable to be a factor:</p>
+<pre class="r"><code>Auto$cylinders = as.factor(Auto$cylinders)</code></pre>
+<div id="understanding-factors-is-extremely-important-for-modeling-dummy-variables" class="section level4">
+<h4><span class="header-section-number">1.0.1.1</span> Understanding factors is extremely important for modeling ! (=dummy variables)</h4>
+<p><strong>dates/times</strong>:</p>
+<pre class="r"><code>x = Sys.Date()
+#or
+as.Date(&quot;2017-03-20&quot;)</code></pre>
+<pre><code>## [1] &quot;2017-03-20&quot;</code></pre>
+<pre class="r"><code>y = Sys.time()
+x</code></pre>
+<pre><code>## [1] &quot;2017-03-16&quot;</code></pre>
+<pre class="r"><code>y</code></pre>
+<pre><code>## [1] &quot;2017-03-16 14:32:04 CET&quot;</code></pre>
+<pre class="r"><code>class(x)</code></pre>
+<pre><code>## [1] &quot;Date&quot;</code></pre>
+<pre class="r"><code>class(y)</code></pre>
+<pre><code>## [1] &quot;POSIXct&quot; &quot;POSIXt&quot;</code></pre>
+<pre class="r"><code>as.numeric(x)</code></pre>
+<pre><code>## [1] 17241</code></pre>
+<pre class="r"><code>as.numeric(y)</code></pre>
+<pre><code>## [1] 1.49e+09</code></pre>
+<pre class="r"><code>#or
+unclass(x)</code></pre>
+<pre><code>## [1] 17241</code></pre>
+<pre class="r"><code>unclass(y)</code></pre>
+<pre><code>## [1] 1.49e+09</code></pre>
+<hr />
+<p>Let us look at some real data now. We load in the <em>S&amp;P Stock Market Data</em> dataset from the <em>ISLR</em> library:</p>
+<pre class="r"><code>library(ISLR)
+data(Smarket)
+
+head(Smarket)</code></pre>
+<pre><code>##   Year   Lag1   Lag2   Lag3   Lag4   Lag5 Volume  Today Direction
+## 1 2001  0.381 -0.192 -2.624 -1.055  5.010   1.19  0.959        Up
+## 2 2001  0.959  0.381 -0.192 -2.624 -1.055   1.30  1.032        Up
+## 3 2001  1.032  0.959  0.381 -0.192 -2.624   1.41 -0.623      Down
+## 4 2001 -0.623  1.032  0.959  0.381 -0.192   1.28  0.614        Up
+## 5 2001  0.614 -0.623  1.032  0.959  0.381   1.21  0.213        Up
+## 6 2001  0.213  0.614 -0.623  1.032  0.959   1.35  1.392        Up</code></pre>
+<pre class="r"><code>mean(Smarket$Lag1)</code></pre>
+<pre><code>## [1] 0.00383</code></pre>
+<ul>
+<li><p><strong>Year</strong> The year that the observation was recorded</p></li>
+<li><p><strong>Lagi</strong>: Percentage return for i days previous</p></li>
+<li><p><strong>Volume</strong>: Volume of shares traded (number of daily shares traded in billions)</p></li>
+<li><p><strong>Today</strong>: Percentage return for today</p></li>
+<li><p><strong>Direction</strong>: A factor with levels Down and Up indicating whether the market had a positive or negative return on a given day</p></li>
+</ul>
+<p>This is a data frame with <strong>mixed data types</strong>:</p>
+<pre class="r"><code>dim(Smarket)</code></pre>
+<pre><code>## [1] 1250    9</code></pre>
+<pre class="r"><code>class(Smarket)</code></pre>
+<pre><code>## [1] &quot;data.frame&quot;</code></pre>
+<pre class="r"><code>class(Smarket$Lag1)</code></pre>
+<pre><code>## [1] &quot;numeric&quot;</code></pre>
+<p>Let us add a proper date variable:</p>
+<pre class="r"><code>Smarket$day = as.Date(&quot;2001-01-01&quot;) + 1:1250</code></pre>
+<hr />
+</div>
+</div>
+</div>
+<div id="control-structures-for-if-else-while" class="section level1">
+<h1><span class="header-section-number">2</span> control structures (for, if else, while)</h1>
+<p>In a non-vectorized language the above command would have necessitated a loop! Since they are useful on their own in R, we will reproduce the <em>day</em> column:</p>
+<pre class="r"><code>#initialize
+Smarket$day = NA
+
+for (i in 1:1250) Smarket$day[i] = as.Date(&quot;2001-01-01&quot;) + i
+
+#or with multiple statements
+for (i in 1:1250) {
+  Smarket$day[i] = as.Date(&quot;2001-01-01&quot;) + i
+  if (Smarket$day[i] == &quot;2001-07-04&quot;) cat(&quot;The return on July 4th was &quot;, Smarket$Today[i], &quot;\n&quot;)
+}</code></pre>
+<div id="wait-a-second-shouldnt-we-exclude-weekends-and-holidays" class="section level3">
+<h3><span class="header-section-number">2.0.1</span> Wait a second, shouldn’t we exclude weekends and holidays?</h3>
+<p>Can we download those from Yahoo finance?</p>
+<pre class="r"><code>library(tseries)
+ # sp500 = get.hist.quote(instrument = &quot;^gspc&quot;, &quot;2001-01-02&quot;, &quot;2005-12-30&quot;,
+ #                 quote = c(&quot;Open&quot;, &quot;Volume&quot;))
+ #  save(sp500, file=&quot;sp500.rda&quot;)
+load(&quot;sp500.rda&quot;)
+n=nrow(sp500)
+#can we compute percent returns?
+sp500$Today = round(100*diff(sp500[,&quot;Open&quot;])/sp500[-n,&quot;Open&quot;],3)
+colnames(sp500)[1]= &quot;Open&quot;</code></pre>
+</div>
+<div id="adding-lagged-variables" class="section level3">
+<h3><span class="header-section-number">2.0.2</span> Adding lagged variables</h3>
+<pre class="r"><code>sp500$Lag1 = lag(sp500$Today,-1)
+sp500$Lag2 = lag(sp500$Today,-2)
+sp500$Lag3 = lag(sp500$Today,-3)
+sp500$Lag4 = lag(sp500$Today,-4)
+sp500$Lag5 = lag(sp500$Today,-5)</code></pre>
+</div>
+<div id="task-use-a-for-loop-to-add-lagged-variables" class="section level3">
+<h3><span class="header-section-number">2.0.3</span> Task: Use a for loop to add lagged variables</h3>
+<hr />
+</div>
+</div>
+<div id="functions-r-markdown" class="section level1">
+<h1><span class="header-section-number">3</span> functions, R markdown</h1>
+<p>So far we have written code that is executed either line by line or as a whole but lacks any “modular” or “reusable” attribute. If you want to build anything more complex it is essential to use “building blocks” that work on their own and can be connected to or used by other modules.</p>
+<p>You have been using the many functions that are part of R already, such as <em>hist()</em>, <em>boxplot()</em>, etc. Clearly, each of these function consists of many lines of codes that you are actually not all that interested in. R being open source, you can just type the name of many functions and you will see the source code, try e.g.</p>
+<pre class="r"><code>sd</code></pre>
+<pre><code>## function (x, na.rm = FALSE) 
+## sqrt(var(if (is.vector(x) || is.factor(x)) x else as.double(x), 
+##     na.rm = na.rm))
+## &lt;bytecode: 0x0000000008328c98&gt;
+## &lt;environment: namespace:stats&gt;</code></pre>
+<p>Functions consist of</p>
+<ol style="list-style-type: decimal">
+<li>a name/title</li>
+<li>arguments</li>
+<li>body</li>
+<li>return values</li>
+</ol>
+<p>For example, if you were to write your own summing function, it could look like this</p>
+<pre class="r"><code>mysum = function(a=4,b=3){
+  c = a+b
+  print(c)
+}
+
+mysum(10,20)</code></pre>
+<pre><code>## [1] 30</code></pre>
+<pre class="r"><code>c = mysum(b=2,a=3)</code></pre>
+<pre><code>## [1] 5</code></pre>
+<p>Add a few checks and a return value:</p>
+<pre class="r"><code>mysum = function(a=4,b=3){
+  #stopifnot(is.numeric(a))
+  if (!is.numeric(a)){
+    print(&quot;a has to be numeric !!!!!! you idiot&quot;)
+    return()
+  }
+  c = a+b
+  return(c)
+}
+
+mysum(&quot;Karl&quot;,20)</code></pre>
+<pre><code>## [1] &quot;a has to be numeric !!!!!! you idiot&quot;</code></pre>
+<pre><code>## NULL</code></pre>
+<p>Comments:</p>
+<ol style="list-style-type: decimal">
+<li>default values</li>
+<li>named arguments</li>
+<li>invisible/optional returns</li>
+<li>local variables</li>
+</ol>
+<hr />
+</div>
+<div id="basic-plotting" class="section level1">
+<h1><span class="header-section-number">4</span> basic plotting</h1>
+<div id="scatter-plots" class="section level3">
+<h3><span class="header-section-number">4.0.1</span> scatter plots</h3>
+<pre class="r"><code>plot(mpg ~ weight, data = Auto,col = rgb(0,0,1,0.5), pch=20);grid()</code></pre>
+<p><img src="Day1_files/figure-html/unnamed-chunk-19-1.png" width="576" /></p>
+<pre class="r"><code>##ggplot version
+library(ggplot2)
+p &lt;- ggplot(Auto, aes(weight, mpg))
+p + geom_point(color=&quot;firebrick&quot;, alpha=0.5)</code></pre>
+<p><img src="Day1_files/figure-html/unnamed-chunk-19-2.png" width="576" /></p>
+</div>
+<div id="histograms" class="section level3">
+<h3><span class="header-section-number">4.0.2</span> histograms</h3>
+<p>Back to the Smarket data: can we take a look at the distribution of the data?</p>
+<pre class="r"><code>par(mfrow=c(1,2))
+hist(Smarket$Lag1)
+hist(Smarket$Volume)</code></pre>
+<p><img src="Day1_files/figure-html/unnamed-chunk-20-1.png" width="960" /></p>
+</div>
+<div id="boxplots" class="section level3">
+<h3><span class="header-section-number">4.0.3</span> boxplots</h3>
+<pre class="r"><code>library(ISLR)
+data(Auto)
+
+boxplot(mpg ~ cylinders, data=Auto, xlab=&quot;cylinders&quot;, ylab=&quot;mpg&quot;);grid()</code></pre>
+<p><img src="Day1_files/figure-html/unnamed-chunk-21-1.png" width="576" /></p>
+<pre class="r"><code>#notched version - for a different data set
+boxplot(mpg ~ cylinders, data=subset(Auto, cylinders %in% c(4,6,8)), xlab=&quot;cylinders&quot;, ylab=&quot;mpg&quot;, notch=TRUE);grid()</code></pre>
+<p><img src="Day1_files/figure-html/unnamed-chunk-21-2.png" width="576" /></p>
+<pre class="r"><code>##ggplot version
+library(ggplot2)
+p &lt;- ggplot(Auto, aes(factor(cylinders), mpg))
+p + geom_boxplot(fill=&quot;darkseagreen4&quot;)</code></pre>
+<p><img src="Day1_files/figure-html/unnamed-chunk-21-3.png" width="576" /></p>
+</div>
+<div id="violin-plots" class="section level3">
+<h3><span class="header-section-number">4.0.4</span> violin plots</h3>
+<pre class="r"><code>p + geom_violin() + geom_jitter(alpha=0.5, width=0.3, aes(color=cylinders))</code></pre>
+<p><img src="Day1_files/figure-html/unnamed-chunk-22-1.png" width="576" /></p>
+</div>
+<div id="time-series-plots" class="section level3">
+<h3><span class="header-section-number">4.0.5</span> time series plots</h3>
+<pre class="r"><code>plot(sp500[,1:2])</code></pre>
+<p><img src="Day1_files/figure-html/unnamed-chunk-23-1.png" width="576" /></p>
+</div>
+<div id="interactive-paning-and-zooming" class="section level3">
+<h3><span class="header-section-number">4.0.6</span> interactive paning and zooming:</h3>
+<pre class="r"><code>library(dygraphs)
+dy=dygraph(sp500[,&quot;Open&quot;])
+dyRangeSelector(dy)</code></pre>
+<div id="htmlwidget-c7e453841863c16b1236" style="width:576px;height:384px;" class="dygraphs html-widget"></div>
+<script type="application/json" data-for="htmlwidget-c7e453841863c16b1236">{"x":{"attrs":{"labels":["day","V1"],"legend":"auto","retainDateWindow":false,"axes":{"x":{"pixelsPerLabel":60}},"showRangeSelector":true,"rangeSelectorHeight":40,"rangeSelectorPlotFillColor":" #A7B1C4","rangeSelectorPlotStrokeColor":"#808FAB","interactionModel":"Dygraph.Interaction.defaultModel"},"scale":"daily","annotations":[],"shadings":[],"events":[],"format":"date","data":[["2001-01-02T00:00:00.000Z","2001-01-03T00:00:00.000Z","2001-01-04T00:00:00.000Z","2001-01-05T00:00:00.000Z","2001-01-08T00:00:00.000Z","2001-01-09T00:00:00.000Z","2001-01-10T00:00:00.000Z","2001-01-11T00:00:00.000Z","2001-01-12T00:00:00.000Z","2001-01-16T00:00:00.000Z","2001-01-17T00:00:00.000Z","2001-01-18T00:00:00.000Z","2001-01-19T00:00:00.000Z","2001-01-22T00:00:00.000Z","2001-01-23T00:00:00.000Z","2001-01-24T00:00:00.000Z","2001-01-25T00:00:00.000Z","2001-01-26T00:00:00.000Z","2001-01-29T00:00:00.000Z","2001-01-30T00:00:00.000Z","2001-01-31T00:00:00.000Z","2001-02-01T00:00:00.000Z","2001-02-02T00:00:00.000Z","2001-02-05T00:00:00.000Z","2001-02-06T00:00:00.000Z","2001-02-07T00:00:00.000Z","2001-02-08T00:00:00.000Z","2001-02-09T00:00:00.000Z","2001-02-12T00:00:00.000Z","2001-02-13T00:00:00.000Z","2001-02-14T00:00:00.000Z","2001-02-15T00:00:00.000Z","2001-02-16T00:00:00.000Z","2001-02-20T00:00:00.000Z","2001-02-21T00:00:00.000Z","2001-02-22T00:00:00.000Z","2001-02-23T00:00:00.000Z","2001-02-26T00:00:00.000Z","2001-02-27T00:00:00.000Z","2001-02-28T00:00:00.000Z","2001-03-01T00:00:00.000Z","2001-03-02T00:00:00.000Z","2001-03-05T00:00:00.000Z","2001-03-06T00:00:00.000Z","2001-03-07T00:00:00.000Z","2001-03-08T00:00:00.000Z","2001-03-09T00:00:00.000Z","2001-03-12T00:00:00.000Z","2001-03-13T00:00:00.000Z","2001-03-14T00:00:00.000Z","2001-03-15T00:00:00.000Z","2001-03-16T00:00:00.000Z","2001-03-19T00:00:00.000Z","2001-03-20T00:00:00.000Z","2001-03-21T00:00:00.000Z","2001-03-22T00:00:00.000Z","2001-03-23T00:00:00.000Z","2001-03-26T00:00:00.000Z","2001-03-27T00:00:00.000Z","2001-03-28T00:00:00.000Z","2001-03-29T00:00:00.000Z","2001-03-30T00:00:00.000Z","2001-04-02T00:00:00.000Z","2001-04-03T00:00:00.000Z","2001-04-04T00:00:00.000Z","2001-04-05T00:00:00.000Z","2001-04-06T00:00:00.000Z","2001-04-09T00:00:00.000Z","2001-04-10T00:00:00.000Z","2001-04-11T00:00:00.000Z","2001-04-12T00:00:00.000Z","2001-04-16T00:00:00.000Z","2001-04-17T00:00:00.000Z","2001-04-18T00:00:00.000Z","2001-04-19T00:00:00.000Z","2001-04-20T00:00:00.000Z","2001-04-23T00:00:00.000Z","2001-04-24T00:00:00.000Z","2001-04-25T00:00:00.000Z","2001-04-26T00:00:00.000Z","2001-04-27T00:00:00.000Z","2001-04-30T00:00:00.000Z","2001-05-01T00:00:00.000Z","2001-05-02T00:00:00.000Z","2001-05-03T00:00:00.000Z","2001-05-04T00:00:00.000Z","2001-05-07T00:00:00.000Z","2001-05-08T00:00:00.000Z","2001-05-09T00:00:00.000Z","2001-05-10T00:00:00.000Z","2001-05-11T00:00:00.000Z","2001-05-14T00:00:00.000Z","2001-05-15T00:00:00.000Z","2001-05-16T00:00:00.000Z","2001-05-17T00:00:00.000Z","2001-05-18T00:00:00.000Z","2001-05-21T00:00:00.000Z","2001-05-22T00:00:00.000Z","2001-05-23T00:00:00.000Z","2001-05-24T00:00:00.000Z","2001-05-25T00:00:00.000Z","2001-05-29T00:00:00.000Z","2001-05-30T00:00:00.000Z","2001-05-31T00:00:00.000Z","2001-06-01T00:00:00.000Z","2001-06-04T00:00:00.000Z","2001-06-05T00:00:00.000Z","2001-06-06T00:00:00.000Z","2001-06-07T00:00:00.000Z","2001-06-08T00:00:00.000Z","2001-06-11T00:00:00.000Z","2001-06-12T00:00:00.000Z","2001-06-13T00:00:00.000Z","2001-06-14T00:00:00.000Z","2001-06-15T00:00:00.000Z","2001-06-18T00:00:00.000Z","2001-06-19T00:00:00.000Z","2001-06-20T00:00:00.000Z","2001-06-21T00:00:00.000Z","2001-06-22T00:00:00.000Z","2001-06-25T00:00:00.000Z","2001-06-26T00:00:00.000Z","2001-06-27T00:00:00.000Z","2001-06-28T00:00:00.000Z","2001-06-29T00:00:00.000Z","2001-07-02T00:00:00.000Z","2001-07-03T00:00:00.000Z","2001-07-05T00:00:00.000Z","2001-07-06T00:00:00.000Z","2001-07-09T00:00:00.000Z","2001-07-10T00:00:00.000Z","2001-07-11T00:00:00.000Z","2001-07-12T00:00:00.000Z","2001-07-13T00:00:00.000Z","2001-07-16T00:00:00.000Z","2001-07-17T00:00:00.000Z","2001-07-18T00:00:00.000Z","2001-07-19T00:00:00.000Z","2001-07-20T00:00:00.000Z","2001-07-23T00:00:00.000Z","2001-07-24T00:00:00.000Z","2001-07-25T00:00:00.000Z","2001-07-26T00:00:00.000Z","2001-07-27T00:00:00.000Z","2001-07-30T00:00:00.000Z","2001-07-31T00:00:00.000Z","2001-08-01T00:00:00.000Z","2001-08-02T00:00:00.000Z","2001-08-03T00:00:00.000Z","2001-08-06T00:00:00.000Z","2001-08-07T00:00:00.000Z","2001-08-08T00:00:00.000Z","2001-08-09T00:00:00.000Z","2001-08-10T00:00:00.000Z","2001-08-13T00:00:00.000Z","2001-08-14T00:00:00.000Z","2001-08-15T00:00:00.000Z","2001-08-16T00:00:00.000Z","2001-08-17T00:00:00.000Z","2001-08-20T00:00:00.000Z","2001-08-21T00:00:00.000Z","2001-08-22T00:00:00.000Z","2001-08-23T00:00:00.000Z","2001-08-24T00:00:00.000Z","2001-08-27T00:00:00.000Z","2001-08-28T00:00:00.000Z","2001-08-29T00:00:00.000Z","2001-08-30T00:00:00.000Z","2001-08-31T00:00:00.000Z","2001-09-04T00:00:00.000Z","2001-09-05T00:00:00.000Z","2001-09-06T00:00:00.000Z","2001-09-07T00:00:00.000Z","2001-09-10T00:00:00.000Z","2001-09-17T00:00:00.000Z","2001-09-18T00:00:00.000Z","2001-09-19T00:00:00.000Z","2001-09-20T00:00:00.000Z","2001-09-21T00:00:00.000Z","2001-09-24T00:00:00.000Z","2001-09-25T00:00:00.000Z","2001-09-26T00:00:00.000Z","2001-09-27T00:00:00.000Z","2001-09-28T00:00:00.000Z","2001-10-01T00:00:00.000Z","2001-10-02T00:00:00.000Z","2001-10-03T00:00:00.000Z","2001-10-04T00:00:00.000Z","2001-10-05T00:00:00.000Z","2001-10-08T00:00:00.000Z","2001-10-09T00:00:00.000Z","2001-10-10T00:00:00.000Z","2001-10-11T00:00:00.000Z","2001-10-12T00:00:00.000Z","2001-10-15T00:00:00.000Z","2001-10-16T00:00:00.000Z","2001-10-17T00:00:00.000Z","2001-10-18T00:00:00.000Z","2001-10-19T00:00:00.000Z","2001-10-22T00:00:00.000Z","2001-10-23T00:00:00.000Z","2001-10-24T00:00:00.000Z","2001-10-25T00:00:00.000Z","2001-10-26T00:00:00.000Z","2001-10-29T00:00:00.000Z","2001-10-30T00:00:00.000Z","2001-10-31T00:00:00.000Z","2001-11-01T00:00:00.000Z","2001-11-02T00:00:00.000Z","2001-11-05T00:00:00.000Z","2001-11-06T00:00:00.000Z","2001-11-07T00:00:00.000Z","2001-11-08T00:00:00.000Z","2001-11-09T00:00:00.000Z","2001-11-12T00:00:00.000Z","2001-11-13T00:00:00.000Z","2001-11-14T00:00:00.000Z","2001-11-15T00:00:00.000Z","2001-11-16T00:00:00.000Z","2001-11-19T00:00:00.000Z","2001-11-20T00:00:00.000Z","2001-11-21T00:00:00.000Z","2001-11-23T00:00:00.000Z","2001-11-26T00:00:00.000Z","2001-11-27T00:00:00.000Z","2001-11-28T00:00:00.000Z","2001-11-29T00:00:00.000Z","2001-11-30T00:00:00.000Z","2001-12-03T00:00:00.000Z","2001-12-04T00:00:00.000Z","2001-12-05T00:00:00.000Z","2001-12-06T00:00:00.000Z","2001-12-07T00:00:00.000Z","2001-12-10T00:00:00.000Z","2001-12-11T00:00:00.000Z","2001-12-12T00:00:00.000Z","2001-12-13T00:00:00.000Z","2001-12-14T00:00:00.000Z","2001-12-17T00:00:00.000Z","2001-12-18T00:00:00.000Z","2001-12-19T00:00:00.000Z","2001-12-20T00:00:00.000Z","2001-12-21T00:00:00.000Z","2001-12-24T00:00:00.000Z","2001-12-26T00:00:00.000Z","2001-12-27T00:00:00.000Z","2001-12-28T00:00:00.000Z","2001-12-31T00:00:00.000Z","2002-01-02T00:00:00.000Z","2002-01-03T00:00:00.000Z","2002-01-04T00:00:00.000Z","2002-01-07T00:00:00.000Z","2002-01-08T00:00:00.000Z","2002-01-09T00:00:00.000Z","2002-01-10T00:00:00.000Z","2002-01-11T00:00:00.000Z","2002-01-14T00:00:00.000Z","2002-01-15T00:00:00.000Z","2002-01-16T00:00:00.000Z","2002-01-17T00:00:00.000Z","2002-01-18T00:00:00.000Z","2002-01-22T00:00:00.000Z","2002-01-23T00:00:00.000Z","2002-01-24T00:00:00.000Z","2002-01-25T00:00:00.000Z","2002-01-28T00:00:00.000Z","2002-01-29T00:00:00.000Z","2002-01-30T00:00:00.000Z","2002-01-31T00:00:00.000Z","2002-02-01T00:00:00.000Z","2002-02-04T00:00:00.000Z","2002-02-05T00:00:00.000Z","2002-02-06T00:00:00.000Z","2002-02-07T00:00:00.000Z","2002-02-08T00:00:00.000Z","2002-02-11T00:00:00.000Z","2002-02-12T00:00:00.000Z","2002-02-13T00:00:00.000Z","2002-02-14T00:00:00.000Z","2002-02-15T00:00:00.000Z","2002-02-19T00:00:00.000Z","2002-02-20T00:00:00.000Z","2002-02-21T00:00:00.000Z","2002-02-22T00:00:00.000Z","2002-02-25T00:00:00.000Z","2002-02-26T00:00:00.000Z","2002-02-27T00:00:00.000Z","2002-02-28T00:00:00.000Z","2002-03-01T00:00:00.000Z","2002-03-04T00:00:00.000Z","2002-03-05T00:00:00.000Z","2002-03-06T00:00:00.000Z","2002-03-07T00:00:00.000Z","2002-03-08T00:00:00.000Z","2002-03-11T00:00:00.000Z","2002-03-12T00:00:00.000Z","2002-03-13T00:00:00.000Z","2002-03-14T00:00:00.000Z","2002-03-15T00:00:00.000Z","2002-03-18T00:00:00.000Z","2002-03-19T00:00:00.000Z","2002-03-20T00:00:00.000Z","2002-03-21T00:00:00.000Z","2002-03-22T00:00:00.000Z","2002-03-25T00:00:00.000Z","2002-03-26T00:00:00.000Z","2002-03-27T00:00:00.000Z","2002-03-28T00:00:00.000Z","2002-04-01T00:00:00.000Z","2002-04-02T00:00:00.000Z","2002-04-03T00:00:00.000Z","2002-04-04T00:00:00.000Z","2002-04-05T00:00:00.000Z","2002-04-08T00:00:00.000Z","2002-04-09T00:00:00.000Z","2002-04-10T00:00:00.000Z","2002-04-11T00:00:00.000Z","2002-04-12T00:00:00.000Z","2002-04-15T00:00:00.000Z","2002-04-16T00:00:00.000Z","2002-04-17T00:00:00.000Z","2002-04-18T00:00:00.000Z","2002-04-19T00:00:00.000Z","2002-04-22T00:00:00.000Z","2002-04-23T00:00:00.000Z","2002-04-24T00:00:00.000Z","2002-04-25T00:00:00.000Z","2002-04-26T00:00:00.000Z","2002-04-29T00:00:00.000Z","2002-04-30T00:00:00.000Z","2002-05-01T00:00:00.000Z","2002-05-02T00:00:00.000Z","2002-05-03T00:00:00.000Z","2002-05-06T00:00:00.000Z","2002-05-07T00:00:00.000Z","2002-05-08T00:00:00.000Z","2002-05-09T00:00:00.000Z","2002-05-10T00:00:00.000Z","2002-05-13T00:00:00.000Z","2002-05-14T00:00:00.000Z","2002-05-15T00:00:00.000Z","2002-05-16T00:00:00.000Z","2002-05-17T00:00:00.000Z","2002-05-20T00:00:00.000Z","2002-05-21T00:00:00.000Z","2002-05-22T00:00:00.000Z","2002-05-23T00:00:00.000Z","2002-05-24T00:00:00.000Z","2002-05-28T00:00:00.000Z","2002-05-29T00:00:00.000Z","2002-05-30T00:00:00.000Z","2002-05-31T00:00:00.000Z","2002-06-03T00:00:00.000Z","2002-06-04T00:00:00.000Z","2002-06-05T00:00:00.000Z","2002-06-06T00:00:00.000Z","2002-06-07T00:00:00.000Z","2002-06-10T00:00:00.000Z","2002-06-11T00:00:00.000Z","2002-06-12T00:00:00.000Z","2002-06-13T00:00:00.000Z","2002-06-14T00:00:00.000Z","2002-06-17T00:00:00.000Z","2002-06-18T00:00:00.000Z","2002-06-19T00:00:00.000Z","2002-06-20T00:00:00.000Z","2002-06-21T00:00:00.000Z","2002-06-24T00:00:00.000Z","2002-06-25T00:00:00.000Z","2002-06-26T00:00:00.000Z","2002-06-27T00:00:00.000Z","2002-06-28T00:00:00.000Z","2002-07-01T00:00:00.000Z","2002-07-02T00:00:00.000Z","2002-07-03T00:00:00.000Z","2002-07-05T00:00:00.000Z","2002-07-08T00:00:00.000Z","2002-07-09T00:00:00.000Z","2002-07-10T00:00:00.000Z","2002-07-11T00:00:00.000Z","2002-07-12T00:00:00.000Z","2002-07-15T00:00:00.000Z","2002-07-16T00:00:00.000Z","2002-07-17T00:00:00.000Z","2002-07-18T00:00:00.000Z","2002-07-19T00:00:00.000Z","2002-07-22T00:00:00.000Z","2002-07-23T00:00:00.000Z","2002-07-24T00:00:00.000Z","2002-07-25T00:00:00.000Z","2002-07-26T00:00:00.000Z","2002-07-29T00:00:00.000Z","2002-07-30T00:00:00.000Z","2002-07-31T00:00:00.000Z","2002-08-01T00:00:00.000Z","2002-08-02T00:00:00.000Z","2002-08-05T00:00:00.000Z","2002-08-06T00:00:00.000Z","2002-08-07T00:00:00.000Z","2002-08-08T00:00:00.000Z","2002-08-09T00:00:00.000Z","2002-08-12T00:00:00.000Z","2002-08-13T00:00:00.000Z","2002-08-14T00:00:00.000Z","2002-08-15T00:00:00.000Z","2002-08-16T00:00:00.000Z","2002-08-19T00:00:00.000Z","2002-08-20T00:00:00.000Z","2002-08-21T00:00:00.000Z","2002-08-22T00:00:00.000Z","2002-08-23T00:00:00.000Z","2002-08-26T00:00:00.000Z","2002-08-27T00:00:00.000Z","2002-08-28T00:00:00.000Z","2002-08-29T00:00:00.000Z","2002-08-30T00:00:00.000Z","2002-09-03T00:00:00.000Z","2002-09-04T00:00:00.000Z","2002-09-05T00:00:00.000Z","2002-09-06T00:00:00.000Z","2002-09-09T00:00:00.000Z","2002-09-10T00:00:00.000Z","2002-09-11T00:00:00.000Z","2002-09-12T00:00:00.000Z","2002-09-13T00:00:00.000Z","2002-09-16T00:00:00.000Z","2002-09-17T00:00:00.000Z","2002-09-18T00:00:00.000Z","2002-09-19T00:00:00.000Z","2002-09-20T00:00:00.000Z","2002-09-23T00:00:00.000Z","2002-09-24T00:00:00.000Z","2002-09-25T00:00:00.000Z","2002-09-26T00:00:00.000Z","2002-09-27T00:00:00.000Z","2002-09-30T00:00:00.000Z","2002-10-01T00:00:00.000Z","2002-10-02T00:00:00.000Z","2002-10-03T00:00:00.000Z","2002-10-04T00:00:00.000Z","2002-10-07T00:00:00.000Z","2002-10-08T00:00:00.000Z","2002-10-09T00:00:00.000Z","2002-10-10T00:00:00.000Z","2002-10-11T00:00:00.000Z","2002-10-14T00:00:00.000Z","2002-10-15T00:00:00.000Z","2002-10-16T00:00:00.000Z","2002-10-17T00:00:00.000Z","2002-10-18T00:00:00.000Z","2002-10-21T00:00:00.000Z","2002-10-22T00:00:00.000Z","2002-10-23T00:00:00.000Z","2002-10-24T00:00:00.000Z","2002-10-25T00:00:00.000Z","2002-10-28T00:00:00.000Z","2002-10-29T00:00:00.000Z","2002-10-30T00:00:00.000Z","2002-10-31T00:00:00.000Z","2002-11-01T00:00:00.000Z","2002-11-04T00:00:00.000Z","2002-11-05T00:00:00.000Z","2002-11-06T00:00:00.000Z","2002-11-07T00:00:00.000Z","2002-11-08T00:00:00.000Z","2002-11-11T00:00:00.000Z","2002-11-12T00:00:00.000Z","2002-11-13T00:00:00.000Z","2002-11-14T00:00:00.000Z","2002-11-15T00:00:00.000Z","2002-11-18T00:00:00.000Z","2002-11-19T00:00:00.000Z","2002-11-20T00:00:00.000Z","2002-11-21T00:00:00.000Z","2002-11-22T00:00:00.000Z","2002-11-25T00:00:00.000Z","2002-11-26T00:00:00.000Z","2002-11-27T00:00:00.000Z","2002-11-29T00:00:00.000Z","2002-12-02T00:00:00.000Z","2002-12-03T00:00:00.000Z","2002-12-04T00:00:00.000Z","2002-12-05T00:00:00.000Z","2002-12-06T00:00:00.000Z","2002-12-09T00:00:00.000Z","2002-12-10T00:00:00.000Z","2002-12-11T00:00:00.000Z","2002-12-12T00:00:00.000Z","2002-12-13T00:00:00.000Z","2002-12-16T00:00:00.000Z","2002-12-17T00:00:00.000Z","2002-12-18T00:00:00.000Z","2002-12-19T00:00:00.000Z","2002-12-20T00:00:00.000Z","2002-12-23T00:00:00.000Z","2002-12-24T00:00:00.000Z","2002-12-26T00:00:00.000Z","2002-12-27T00:00:00.000Z","2002-12-30T00:00:00.000Z","2002-12-31T00:00:00.000Z","2003-01-02T00:00:00.000Z","2003-01-03T00:00:00.000Z","2003-01-06T00:00:00.000Z","2003-01-07T00:00:00.000Z","2003-01-08T00:00:00.000Z","2003-01-09T00:00:00.000Z","2003-01-10T00:00:00.000Z","2003-01-13T00:00:00.000Z","2003-01-14T00:00:00.000Z","2003-01-15T00:00:00.000Z","2003-01-16T00:00:00.000Z","2003-01-17T00:00:00.000Z","2003-01-21T00:00:00.000Z","2003-01-22T00:00:00.000Z","2003-01-23T00:00:00.000Z","2003-01-24T00:00:00.000Z","2003-01-27T00:00:00.000Z","2003-01-28T00:00:00.000Z","2003-01-29T00:00:00.000Z","2003-01-30T00:00:00.000Z","2003-01-31T00:00:00.000Z","2003-02-03T00:00:00.000Z","2003-02-04T00:00:00.000Z","2003-02-05T00:00:00.000Z","2003-02-06T00:00:00.000Z","2003-02-07T00:00:00.000Z","2003-02-10T00:00:00.000Z","2003-02-11T00:00:00.000Z","2003-02-12T00:00:00.000Z","2003-02-13T00:00:00.000Z","2003-02-14T00:00:00.000Z","2003-02-18T00:00:00.000Z","2003-02-19T00:00:00.000Z","2003-02-20T00:00:00.000Z","2003-02-21T00:00:00.000Z","2003-02-24T00:00:00.000Z","2003-02-25T00:00:00.000Z","2003-02-26T00:00:00.000Z","2003-02-27T00:00:00.000Z","2003-02-28T00:00:00.000Z","2003-03-03T00:00:00.000Z","2003-03-04T00:00:00.000Z","2003-03-05T00:00:00.000Z","2003-03-06T00:00:00.000Z","2003-03-07T00:00:00.000Z","2003-03-10T00:00:00.000Z","2003-03-11T00:00:00.000Z","2003-03-12T00:00:00.000Z","2003-03-13T00:00:00.000Z","2003-03-14T00:00:00.000Z","2003-03-17T00:00:00.000Z","2003-03-18T00:00:00.000Z","2003-03-19T00:00:00.000Z","2003-03-20T00:00:00.000Z","2003-03-21T00:00:00.000Z","2003-03-24T00:00:00.000Z","2003-03-25T00:00:00.000Z","2003-03-26T00:00:00.000Z","2003-03-27T00:00:00.000Z","2003-03-28T00:00:00.000Z","2003-03-31T00:00:00.000Z","2003-04-01T00:00:00.000Z","2003-04-02T00:00:00.000Z","2003-04-03T00:00:00.000Z","2003-04-04T00:00:00.000Z","2003-04-07T00:00:00.000Z","2003-04-08T00:00:00.000Z","2003-04-09T00:00:00.000Z","2003-04-10T00:00:00.000Z","2003-04-11T00:00:00.000Z","2003-04-14T00:00:00.000Z","2003-04-15T00:00:00.000Z","2003-04-16T00:00:00.000Z","2003-04-17T00:00:00.000Z","2003-04-21T00:00:00.000Z","2003-04-22T00:00:00.000Z","2003-04-23T00:00:00.000Z","2003-04-24T00:00:00.000Z","2003-04-25T00:00:00.000Z","2003-04-28T00:00:00.000Z","2003-04-29T00:00:00.000Z","2003-04-30T00:00:00.000Z","2003-05-01T00:00:00.000Z","2003-05-02T00:00:00.000Z","2003-05-05T00:00:00.000Z","2003-05-06T00:00:00.000Z","2003-05-07T00:00:00.000Z","2003-05-08T00:00:00.000Z","2003-05-09T00:00:00.000Z","2003-05-12T00:00:00.000Z","2003-05-13T00:00:00.000Z","2003-05-14T00:00:00.000Z","2003-05-15T00:00:00.000Z","2003-05-16T00:00:00.000Z","2003-05-19T00:00:00.000Z","2003-05-20T00:00:00.000Z","2003-05-21T00:00:00.000Z","2003-05-22T00:00:00.000Z","2003-05-23T00:00:00.000Z","2003-05-27T00:00:00.000Z","2003-05-28T00:00:00.000Z","2003-05-29T00:00:00.000Z","2003-05-30T00:00:00.000Z","2003-06-02T00:00:00.000Z","2003-06-03T00:00:00.000Z","2003-06-04T00:00:00.000Z","2003-06-05T00:00:00.000Z","2003-06-06T00:00:00.000Z","2003-06-09T00:00:00.000Z","2003-06-10T00:00:00.000Z","2003-06-11T00:00:00.000Z","2003-06-12T00:00:00.000Z","2003-06-13T00:00:00.000Z","2003-06-16T00:00:00.000Z","2003-06-17T00:00:00.000Z","2003-06-18T00:00:00.000Z","2003-06-19T00:00:00.000Z","2003-06-20T00:00:00.000Z","2003-06-23T00:00:00.000Z","2003-06-24T00:00:00.000Z","2003-06-25T00:00:00.000Z","2003-06-26T00:00:00.000Z","2003-06-27T00:00:00.000Z","2003-06-30T00:00:00.000Z","2003-07-01T00:00:00.000Z","2003-07-02T00:00:00.000Z","2003-07-03T00:00:00.000Z","2003-07-07T00:00:00.000Z","2003-07-08T00:00:00.000Z","2003-07-09T00:00:00.000Z","2003-07-10T00:00:00.000Z","2003-07-11T00:00:00.000Z","2003-07-14T00:00:00.000Z","2003-07-15T00:00:00.000Z","2003-07-16T00:00:00.000Z","2003-07-17T00:00:00.000Z","2003-07-18T00:00:00.000Z","2003-07-21T00:00:00.000Z","2003-07-22T00:00:00.000Z","2003-07-23T00:00:00.000Z","2003-07-24T00:00:00.000Z","2003-07-25T00:00:00.000Z","2003-07-28T00:00:00.000Z","2003-07-29T00:00:00.000Z","2003-07-30T00:00:00.000Z","2003-07-31T00:00:00.000Z","2003-08-01T00:00:00.000Z","2003-08-04T00:00:00.000Z","2003-08-05T00:00:00.000Z","2003-08-06T00:00:00.000Z","2003-08-07T00:00:00.000Z","2003-08-08T00:00:00.000Z","2003-08-11T00:00:00.000Z","2003-08-12T00:00:00.000Z","2003-08-13T00:00:00.000Z","2003-08-14T00:00:00.000Z","2003-08-15T00:00:00.000Z","2003-08-18T00:00:00.000Z","2003-08-19T00:00:00.000Z","2003-08-20T00:00:00.000Z","2003-08-21T00:00:00.000Z","2003-08-22T00:00:00.000Z","2003-08-25T00:00:00.000Z","2003-08-26T00:00:00.000Z","2003-08-27T00:00:00.000Z","2003-08-28T00:00:00.000Z","2003-08-29T00:00:00.000Z","2003-09-02T00:00:00.000Z","2003-09-03T00:00:00.000Z","2003-09-04T00:00:00.000Z","2003-09-05T00:00:00.000Z","2003-09-08T00:00:00.000Z","2003-09-09T00:00:00.000Z","2003-09-10T00:00:00.000Z","2003-09-11T00:00:00.000Z","2003-09-12T00:00:00.000Z","2003-09-15T00:00:00.000Z","2003-09-16T00:00:00.000Z","2003-09-17T00:00:00.000Z","2003-09-18T00:00:00.000Z","2003-09-19T00:00:00.000Z","2003-09-22T00:00:00.000Z","2003-09-23T00:00:00.000Z","2003-09-24T00:00:00.000Z","2003-09-25T00:00:00.000Z","2003-09-26T00:00:00.000Z","2003-09-29T00:00:00.000Z","2003-09-30T00:00:00.000Z","2003-10-01T00:00:00.000Z","2003-10-02T00:00:00.000Z","2003-10-03T00:00:00.000Z","2003-10-06T00:00:00.000Z","2003-10-07T00:00:00.000Z","2003-10-08T00:00:00.000Z","2003-10-09T00:00:00.000Z","2003-10-10T00:00:00.000Z","2003-10-13T00:00:00.000Z","2003-10-14T00:00:00.000Z","2003-10-15T00:00:00.000Z","2003-10-16T00:00:00.000Z","2003-10-17T00:00:00.000Z","2003-10-20T00:00:00.000Z","2003-10-21T00:00:00.000Z","2003-10-22T00:00:00.000Z","2003-10-23T00:00:00.000Z","2003-10-24T00:00:00.000Z","2003-10-27T00:00:00.000Z","2003-10-28T00:00:00.000Z","2003-10-29T00:00:00.000Z","2003-10-30T00:00:00.000Z","2003-10-31T00:00:00.000Z","2003-11-03T00:00:00.000Z","2003-11-04T00:00:00.000Z","2003-11-05T00:00:00.000Z","2003-11-06T00:00:00.000Z","2003-11-07T00:00:00.000Z","2003-11-10T00:00:00.000Z","2003-11-11T00:00:00.000Z","2003-11-12T00:00:00.000Z","2003-11-13T00:00:00.000Z","2003-11-14T00:00:00.000Z","2003-11-17T00:00:00.000Z","2003-11-18T00:00:00.000Z","2003-11-19T00:00:00.000Z","2003-11-20T00:00:00.000Z","2003-11-21T00:00:00.000Z","2003-11-24T00:00:00.000Z","2003-11-25T00:00:00.000Z","2003-11-26T00:00:00.000Z","2003-11-28T00:00:00.000Z","2003-12-01T00:00:00.000Z","2003-12-02T00:00:00.000Z","2003-12-03T00:00:00.000Z","2003-12-04T00:00:00.000Z","2003-12-05T00:00:00.000Z","2003-12-08T00:00:00.000Z","2003-12-09T00:00:00.000Z","2003-12-10T00:00:00.000Z","2003-12-11T00:00:00.000Z","2003-12-12T00:00:00.000Z","2003-12-15T00:00:00.000Z","2003-12-16T00:00:00.000Z","2003-12-17T00:00:00.000Z","2003-12-18T00:00:00.000Z","2003-12-19T00:00:00.000Z","2003-12-22T00:00:00.000Z","2003-12-23T00:00:00.000Z","2003-12-24T00:00:00.000Z","2003-12-26T00:00:00.000Z","2003-12-29T00:00:00.000Z","2003-12-30T00:00:00.000Z","2003-12-31T00:00:00.000Z","2004-01-02T00:00:00.000Z","2004-01-05T00:00:00.000Z","2004-01-06T00:00:00.000Z","2004-01-07T00:00:00.000Z","2004-01-08T00:00:00.000Z","2004-01-09T00:00:00.000Z","2004-01-12T00:00:00.000Z","2004-01-13T00:00:00.000Z","2004-01-14T00:00:00.000Z","2004-01-15T00:00:00.000Z","2004-01-16T00:00:00.000Z","2004-01-20T00:00:00.000Z","2004-01-21T00:00:00.000Z","2004-01-22T00:00:00.000Z","2004-01-23T00:00:00.000Z","2004-01-26T00:00:00.000Z","2004-01-27T00:00:00.000Z","2004-01-28T00:00:00.000Z","2004-01-29T00:00:00.000Z","2004-01-30T00:00:00.000Z","2004-02-02T00:00:00.000Z","2004-02-03T00:00:00.000Z","2004-02-04T00:00:00.000Z","2004-02-05T00:00:00.000Z","2004-02-06T00:00:00.000Z","2004-02-09T00:00:00.000Z","2004-02-10T00:00:00.000Z","2004-02-11T00:00:00.000Z","2004-02-12T00:00:00.000Z","2004-02-13T00:00:00.000Z","2004-02-17T00:00:00.000Z","2004-02-18T00:00:00.000Z","2004-02-19T00:00:00.000Z","2004-02-20T00:00:00.000Z","2004-02-23T00:00:00.000Z","2004-02-24T00:00:00.000Z","2004-02-25T00:00:00.000Z","2004-02-26T00:00:00.000Z","2004-02-27T00:00:00.000Z","2004-03-01T00:00:00.000Z","2004-03-02T00:00:00.000Z","2004-03-03T00:00:00.000Z","2004-03-04T00:00:00.000Z","2004-03-05T00:00:00.000Z","2004-03-08T00:00:00.000Z","2004-03-09T00:00:00.000Z","2004-03-10T00:00:00.000Z","2004-03-11T00:00:00.000Z","2004-03-12T00:00:00.000Z","2004-03-15T00:00:00.000Z","2004-03-16T00:00:00.000Z","2004-03-17T00:00:00.000Z","2004-03-18T00:00:00.000Z","2004-03-19T00:00:00.000Z","2004-03-22T00:00:00.000Z","2004-03-23T00:00:00.000Z","2004-03-24T00:00:00.000Z","2004-03-25T00:00:00.000Z","2004-03-26T00:00:00.000Z","2004-03-29T00:00:00.000Z","2004-03-30T00:00:00.000Z","2004-03-31T00:00:00.000Z","2004-04-01T00:00:00.000Z","2004-04-02T00:00:00.000Z","2004-04-05T00:00:00.000Z","2004-04-06T00:00:00.000Z","2004-04-07T00:00:00.000Z","2004-04-08T00:00:00.000Z","2004-04-12T00:00:00.000Z","2004-04-13T00:00:00.000Z","2004-04-14T00:00:00.000Z","2004-04-15T00:00:00.000Z","2004-04-16T00:00:00.000Z","2004-04-19T00:00:00.000Z","2004-04-20T00:00:00.000Z","2004-04-21T00:00:00.000Z","2004-04-22T00:00:00.000Z","2004-04-23T00:00:00.000Z","2004-04-26T00:00:00.000Z","2004-04-27T00:00:00.000Z","2004-04-28T00:00:00.000Z","2004-04-29T00:00:00.000Z","2004-04-30T00:00:00.000Z","2004-05-03T00:00:00.000Z","2004-05-04T00:00:00.000Z","2004-05-05T00:00:00.000Z","2004-05-06T00:00:00.000Z","2004-05-07T00:00:00.000Z","2004-05-10T00:00:00.000Z","2004-05-11T00:00:00.000Z","2004-05-12T00:00:00.000Z","2004-05-13T00:00:00.000Z","2004-05-14T00:00:00.000Z","2004-05-17T00:00:00.000Z","2004-05-18T00:00:00.000Z","2004-05-19T00:00:00.000Z","2004-05-20T00:00:00.000Z","2004-05-21T00:00:00.000Z","2004-05-24T00:00:00.000Z","2004-05-25T00:00:00.000Z","2004-05-26T00:00:00.000Z","2004-05-27T00:00:00.000Z","2004-05-28T00:00:00.000Z","2004-06-01T00:00:00.000Z","2004-06-02T00:00:00.000Z","2004-06-03T00:00:00.000Z","2004-06-04T00:00:00.000Z","2004-06-07T00:00:00.000Z","2004-06-08T00:00:00.000Z","2004-06-09T00:00:00.000Z","2004-06-10T00:00:00.000Z","2004-06-14T00:00:00.000Z","2004-06-15T00:00:00.000Z","2004-06-16T00:00:00.000Z","2004-06-17T00:00:00.000Z","2004-06-18T00:00:00.000Z","2004-06-21T00:00:00.000Z","2004-06-22T00:00:00.000Z","2004-06-23T00:00:00.000Z","2004-06-24T00:00:00.000Z","2004-06-25T00:00:00.000Z","2004-06-28T00:00:00.000Z","2004-06-29T00:00:00.000Z","2004-06-30T00:00:00.000Z","2004-07-01T00:00:00.000Z","2004-07-02T00:00:00.000Z","2004-07-06T00:00:00.000Z","2004-07-07T00:00:00.000Z","2004-07-08T00:00:00.000Z","2004-07-09T00:00:00.000Z","2004-07-12T00:00:00.000Z","2004-07-13T00:00:00.000Z","2004-07-14T00:00:00.000Z","2004-07-15T00:00:00.000Z","2004-07-16T00:00:00.000Z","2004-07-19T00:00:00.000Z","2004-07-20T00:00:00.000Z","2004-07-21T00:00:00.000Z","2004-07-22T00:00:00.000Z","2004-07-23T00:00:00.000Z","2004-07-26T00:00:00.000Z","2004-07-27T00:00:00.000Z","2004-07-28T00:00:00.000Z","2004-07-29T00:00:00.000Z","2004-07-30T00:00:00.000Z","2004-08-02T00:00:00.000Z","2004-08-03T00:00:00.000Z","2004-08-04T00:00:00.000Z","2004-08-05T00:00:00.000Z","2004-08-06T00:00:00.000Z","2004-08-09T00:00:00.000Z","2004-08-10T00:00:00.000Z","2004-08-11T00:00:00.000Z","2004-08-12T00:00:00.000Z","2004-08-13T00:00:00.000Z","2004-08-16T00:00:00.000Z","2004-08-17T00:00:00.000Z","2004-08-18T00:00:00.000Z","2004-08-19T00:00:00.000Z","2004-08-20T00:00:00.000Z","2004-08-23T00:00:00.000Z","2004-08-24T00:00:00.000Z","2004-08-25T00:00:00.000Z","2004-08-26T00:00:00.000Z","2004-08-27T00:00:00.000Z","2004-08-30T00:00:00.000Z","2004-08-31T00:00:00.000Z","2004-09-01T00:00:00.000Z","2004-09-02T00:00:00.000Z","2004-09-03T00:00:00.000Z","2004-09-07T00:00:00.000Z","2004-09-08T00:00:00.000Z","2004-09-09T00:00:00.000Z","2004-09-10T00:00:00.000Z","2004-09-13T00:00:00.000Z","2004-09-14T00:00:00.000Z","2004-09-15T00:00:00.000Z","2004-09-16T00:00:00.000Z","2004-09-17T00:00:00.000Z","2004-09-20T00:00:00.000Z","2004-09-21T00:00:00.000Z","2004-09-22T00:00:00.000Z","2004-09-23T00:00:00.000Z","2004-09-24T00:00:00.000Z","2004-09-27T00:00:00.000Z","2004-09-28T00:00:00.000Z","2004-09-29T00:00:00.000Z","2004-09-30T00:00:00.000Z","2004-10-01T00:00:00.000Z","2004-10-04T00:00:00.000Z","2004-10-05T00:00:00.000Z","2004-10-06T00:00:00.000Z","2004-10-07T00:00:00.000Z","2004-10-08T00:00:00.000Z","2004-10-11T00:00:00.000Z","2004-10-12T00:00:00.000Z","2004-10-13T00:00:00.000Z","2004-10-14T00:00:00.000Z","2004-10-15T00:00:00.000Z","2004-10-18T00:00:00.000Z","2004-10-19T00:00:00.000Z","2004-10-20T00:00:00.000Z","2004-10-21T00:00:00.000Z","2004-10-22T00:00:00.000Z","2004-10-25T00:00:00.000Z","2004-10-26T00:00:00.000Z","2004-10-27T00:00:00.000Z","2004-10-28T00:00:00.000Z","2004-10-29T00:00:00.000Z","2004-11-01T00:00:00.000Z","2004-11-02T00:00:00.000Z","2004-11-03T00:00:00.000Z","2004-11-04T00:00:00.000Z","2004-11-05T00:00:00.000Z","2004-11-08T00:00:00.000Z","2004-11-09T00:00:00.000Z","2004-11-10T00:00:00.000Z","2004-11-11T00:00:00.000Z","2004-11-12T00:00:00.000Z","2004-11-15T00:00:00.000Z","2004-11-16T00:00:00.000Z","2004-11-17T00:00:00.000Z","2004-11-18T00:00:00.000Z","2004-11-19T00:00:00.000Z","2004-11-22T00:00:00.000Z","2004-11-23T00:00:00.000Z","2004-11-24T00:00:00.000Z","2004-11-26T00:00:00.000Z","2004-11-29T00:00:00.000Z","2004-11-30T00:00:00.000Z","2004-12-01T00:00:00.000Z","2004-12-02T00:00:00.000Z","2004-12-03T00:00:00.000Z","2004-12-06T00:00:00.000Z","2004-12-07T00:00:00.000Z","2004-12-08T00:00:00.000Z","2004-12-09T00:00:00.000Z","2004-12-10T00:00:00.000Z","2004-12-13T00:00:00.000Z","2004-12-14T00:00:00.000Z","2004-12-15T00:00:00.000Z","2004-12-16T00:00:00.000Z","2004-12-17T00:00:00.000Z","2004-12-20T00:00:00.000Z","2004-12-21T00:00:00.000Z","2004-12-22T00:00:00.000Z","2004-12-23T00:00:00.000Z","2004-12-27T00:00:00.000Z","2004-12-28T00:00:00.000Z","2004-12-29T00:00:00.000Z","2004-12-30T00:00:00.000Z","2004-12-31T00:00:00.000Z","2005-01-03T00:00:00.000Z","2005-01-04T00:00:00.000Z","2005-01-05T00:00:00.000Z","2005-01-06T00:00:00.000Z","2005-01-07T00:00:00.000Z","2005-01-10T00:00:00.000Z","2005-01-11T00:00:00.000Z","2005-01-12T00:00:00.000Z","2005-01-13T00:00:00.000Z","2005-01-14T00:00:00.000Z","2005-01-18T00:00:00.000Z","2005-01-19T00:00:00.000Z","2005-01-20T00:00:00.000Z","2005-01-21T00:00:00.000Z","2005-01-24T00:00:00.000Z","2005-01-25T00:00:00.000Z","2005-01-26T00:00:00.000Z","2005-01-27T00:00:00.000Z","2005-01-28T00:00:00.000Z","2005-01-31T00:00:00.000Z","2005-02-01T00:00:00.000Z","2005-02-02T00:00:00.000Z","2005-02-03T00:00:00.000Z","2005-02-04T00:00:00.000Z","2005-02-07T00:00:00.000Z","2005-02-08T00:00:00.000Z","2005-02-09T00:00:00.000Z","2005-02-10T00:00:00.000Z","2005-02-11T00:00:00.000Z","2005-02-14T00:00:00.000Z","2005-02-15T00:00:00.000Z","2005-02-16T00:00:00.000Z","2005-02-17T00:00:00.000Z","2005-02-18T00:00:00.000Z","2005-02-22T00:00:00.000Z","2005-02-23T00:00:00.000Z","2005-02-24T00:00:00.000Z","2005-02-25T00:00:00.000Z","2005-02-28T00:00:00.000Z","2005-03-01T00:00:00.000Z","2005-03-02T00:00:00.000Z","2005-03-03T00:00:00.000Z","2005-03-04T00:00:00.000Z","2005-03-07T00:00:00.000Z","2005-03-08T00:00:00.000Z","2005-03-09T00:00:00.000Z","2005-03-10T00:00:00.000Z","2005-03-11T00:00:00.000Z","2005-03-14T00:00:00.000Z","2005-03-15T00:00:00.000Z","2005-03-16T00:00:00.000Z","2005-03-17T00:00:00.000Z","2005-03-18T00:00:00.000Z","2005-03-21T00:00:00.000Z","2005-03-22T00:00:00.000Z","2005-03-23T00:00:00.000Z","2005-03-24T00:00:00.000Z","2005-03-28T00:00:00.000Z","2005-03-29T00:00:00.000Z","2005-03-30T00:00:00.000Z","2005-03-31T00:00:00.000Z","2005-04-01T00:00:00.000Z","2005-04-04T00:00:00.000Z","2005-04-05T00:00:00.000Z","2005-04-06T00:00:00.000Z","2005-04-07T00:00:00.000Z","2005-04-08T00:00:00.000Z","2005-04-11T00:00:00.000Z","2005-04-12T00:00:00.000Z","2005-04-13T00:00:00.000Z","2005-04-14T00:00:00.000Z","2005-04-15T00:00:00.000Z","2005-04-18T00:00:00.000Z","2005-04-19T00:00:00.000Z","2005-04-20T00:00:00.000Z","2005-04-21T00:00:00.000Z","2005-04-22T00:00:00.000Z","2005-04-25T00:00:00.000Z","2005-04-26T00:00:00.000Z","2005-04-27T00:00:00.000Z","2005-04-28T00:00:00.000Z","2005-04-29T00:00:00.000Z","2005-05-02T00:00:00.000Z","2005-05-03T00:00:00.000Z","2005-05-04T00:00:00.000Z","2005-05-05T00:00:00.000Z","2005-05-06T00:00:00.000Z","2005-05-09T00:00:00.000Z","2005-05-10T00:00:00.000Z","2005-05-11T00:00:00.000Z","2005-05-12T00:00:00.000Z","2005-05-13T00:00:00.000Z","2005-05-16T00:00:00.000Z","2005-05-17T00:00:00.000Z","2005-05-18T00:00:00.000Z","2005-05-19T00:00:00.000Z","2005-05-20T00:00:00.000Z","2005-05-23T00:00:00.000Z","2005-05-24T00:00:00.000Z","2005-05-25T00:00:00.000Z","2005-05-26T00:00:00.000Z","2005-05-27T00:00:00.000Z","2005-05-31T00:00:00.000Z","2005-06-01T00:00:00.000Z","2005-06-02T00:00:00.000Z","2005-06-03T00:00:00.000Z","2005-06-06T00:00:00.000Z","2005-06-07T00:00:00.000Z","2005-06-08T00:00:00.000Z","2005-06-09T00:00:00.000Z","2005-06-10T00:00:00.000Z","2005-06-13T00:00:00.000Z","2005-06-14T00:00:00.000Z","2005-06-15T00:00:00.000Z","2005-06-16T00:00:00.000Z","2005-06-17T00:00:00.000Z","2005-06-20T00:00:00.000Z","2005-06-21T00:00:00.000Z","2005-06-22T00:00:00.000Z","2005-06-23T00:00:00.000Z","2005-06-24T00:00:00.000Z","2005-06-27T00:00:00.000Z","2005-06-28T00:00:00.000Z","2005-06-29T00:00:00.000Z","2005-06-30T00:00:00.000Z","2005-07-01T00:00:00.000Z","2005-07-05T00:00:00.000Z","2005-07-06T00:00:00.000Z","2005-07-07T00:00:00.000Z","2005-07-08T00:00:00.000Z","2005-07-11T00:00:00.000Z","2005-07-12T00:00:00.000Z","2005-07-13T00:00:00.000Z","2005-07-14T00:00:00.000Z","2005-07-15T00:00:00.000Z","2005-07-18T00:00:00.000Z","2005-07-19T00:00:00.000Z","2005-07-20T00:00:00.000Z","2005-07-21T00:00:00.000Z","2005-07-22T00:00:00.000Z","2005-07-25T00:00:00.000Z","2005-07-26T00:00:00.000Z","2005-07-27T00:00:00.000Z","2005-07-28T00:00:00.000Z","2005-07-29T00:00:00.000Z","2005-08-01T00:00:00.000Z","2005-08-02T00:00:00.000Z","2005-08-03T00:00:00.000Z","2005-08-04T00:00:00.000Z","2005-08-05T00:00:00.000Z","2005-08-08T00:00:00.000Z","2005-08-09T00:00:00.000Z","2005-08-10T00:00:00.000Z","2005-08-11T00:00:00.000Z","2005-08-12T00:00:00.000Z","2005-08-15T00:00:00.000Z","2005-08-16T00:00:00.000Z","2005-08-17T00:00:00.000Z","2005-08-18T00:00:00.000Z","2005-08-19T00:00:00.000Z","2005-08-22T00:00:00.000Z","2005-08-23T00:00:00.000Z","2005-08-24T00:00:00.000Z","2005-08-25T00:00:00.000Z","2005-08-26T00:00:00.000Z","2005-08-29T00:00:00.000Z","2005-08-30T00:00:00.000Z","2005-08-31T00:00:00.000Z","2005-09-01T00:00:00.000Z","2005-09-02T00:00:00.000Z","2005-09-06T00:00:00.000Z","2005-09-07T00:00:00.000Z","2005-09-08T00:00:00.000Z","2005-09-09T00:00:00.000Z","2005-09-12T00:00:00.000Z","2005-09-13T00:00:00.000Z","2005-09-14T00:00:00.000Z","2005-09-15T00:00:00.000Z","2005-09-16T00:00:00.000Z","2005-09-19T00:00:00.000Z","2005-09-20T00:00:00.000Z","2005-09-21T00:00:00.000Z","2005-09-22T00:00:00.000Z","2005-09-23T00:00:00.000Z","2005-09-26T00:00:00.000Z","2005-09-27T00:00:00.000Z","2005-09-28T00:00:00.000Z","2005-09-29T00:00:00.000Z","2005-09-30T00:00:00.000Z","2005-10-03T00:00:00.000Z","2005-10-04T00:00:00.000Z","2005-10-05T00:00:00.000Z","2005-10-06T00:00:00.000Z","2005-10-07T00:00:00.000Z","2005-10-10T00:00:00.000Z","2005-10-11T00:00:00.000Z","2005-10-12T00:00:00.000Z","2005-10-13T00:00:00.000Z","2005-10-14T00:00:00.000Z","2005-10-17T00:00:00.000Z","2005-10-18T00:00:00.000Z","2005-10-19T00:00:00.000Z","2005-10-20T00:00:00.000Z","2005-10-21T00:00:00.000Z","2005-10-24T00:00:00.000Z","2005-10-25T00:00:00.000Z","2005-10-26T00:00:00.000Z","2005-10-27T00:00:00.000Z","2005-10-28T00:00:00.000Z","2005-10-31T00:00:00.000Z","2005-11-01T00:00:00.000Z","2005-11-02T00:00:00.000Z","2005-11-03T00:00:00.000Z","2005-11-04T00:00:00.000Z","2005-11-07T00:00:00.000Z","2005-11-08T00:00:00.000Z","2005-11-09T00:00:00.000Z","2005-11-10T00:00:00.000Z","2005-11-11T00:00:00.000Z","2005-11-14T00:00:00.000Z","2005-11-15T00:00:00.000Z","2005-11-16T00:00:00.000Z","2005-11-17T00:00:00.000Z","2005-11-18T00:00:00.000Z","2005-11-21T00:00:00.000Z","2005-11-22T00:00:00.000Z","2005-11-23T00:00:00.000Z","2005-11-25T00:00:00.000Z","2005-11-28T00:00:00.000Z","2005-11-29T00:00:00.000Z","2005-11-30T00:00:00.000Z","2005-12-01T00:00:00.000Z","2005-12-02T00:00:00.000Z","2005-12-05T00:00:00.000Z","2005-12-06T00:00:00.000Z","2005-12-07T00:00:00.000Z","2005-12-08T00:00:00.000Z","2005-12-09T00:00:00.000Z","2005-12-12T00:00:00.000Z","2005-12-13T00:00:00.000Z","2005-12-14T00:00:00.000Z","2005-12-15T00:00:00.000Z","2005-12-16T00:00:00.000Z","2005-12-19T00:00:00.000Z","2005-12-20T00:00:00.000Z","2005-12-21T00:00:00.000Z","2005-12-22T00:00:00.000Z","2005-12-23T00:00:00.000Z","2005-12-27T00:00:00.000Z","2005-12-28T00:00:00.000Z","2005-12-29T00:00:00.000Z","2005-12-30T00:00:00.000Z"],[1320.280029,1283.27002,1347.560059,1333.339966,1298.349976,1295.859985,1300.800049,1313.27002,1326.819946,1318.319946,1326.650024,1329.890015,1347.969971,1342.540039,1342.900024,1360.400024,1364.300049,1357.51001,1354.920044,1364.170044,1373.72998,1366.01001,1373.469971,1349.469971,1354.310059,1352.26001,1341.099976,1332.530029,1314.76001,1330.310059,1318.800049,1315.920044,1326.609985,1301.530029,1278.939941,1255.27002,1252.819946,1245.859985,1267.650024,1257.939941,1239.939941,1241.22998,1234.180054,1241.410034,1253.800049,1261.890015,1264.73999,1233.420044,1180.160034,1197.660034,1166.709961,1173.560059,1150.530029,1170.810059,1142.619995,1122.140015,1117.579956,1139.829956,1152.689941,1182.170044,1153.290039,1147.949951,1160.329956,1145.869995,1106.459961,1103.25,1151.439941,1128.430054,1137.589966,1168.380005,1165.890015,1183.5,1179.680054,1191.810059,1238.160034,1253.699951,1242.97998,1224.359985,1209.469971,1228.75,1234.52002,1253.050049,1249.459961,1266.439941,1267.430054,1248.579956,1266.609985,1266.709961,1261.199951,1255.540039,1255.180054,1245.670044,1248.920044,1249.439941,1284.98999,1288.48999,1291.959961,1312.829956,1309.380005,1289.050049,1293.170044,1277.890015,1267.930054,1248.079956,1255.819946,1260.670044,1267.109985,1283.569946,1270.030029,1276.959961,1264.959961,1254.390015,1255.849976,1241.599976,1219.869995,1214.359985,1208.430054,1212.579956,1223.140015,1237.040039,1225.349976,1218.599976,1216.76001,1211.069946,1226.199951,1224.420044,1236.709961,1234.449951,1219.23999,1190.589966,1198.780029,1181.52002,1180.180054,1208.140015,1215.680054,1202.449951,1214.439941,1207.709961,1215.02002,1210.849976,1191.030029,1171.650024,1190.48999,1202.930054,1205.819946,1204.52002,1211.22998,1215.930054,1220.75,1214.349976,1200.469971,1204.400024,1183.530029,1183.430054,1190.160034,1191.290039,1186.72998,1178.02002,1181.660034,1161.969971,1171.410034,1157.26001,1165.310059,1162.089966,1184.930054,1179.209961,1161.51001,1148.599976,1129.030029,1133.579956,1132.939941,1131.73999,1106.400024,1085.780029,1092.540039,1038.77002,1032.73999,1016.099976,984.539978,965.799988,1003.450012,1012.27002,1007.039978,1018.609985,1040.939941,1038.550049,1051.329956,1072.280029,1069.619995,1071.369995,1062.439941,1056.75,1080.98999,1097.430054,1091.650024,1089.97998,1097.540039,1077.089966,1068.609985,1073.47998,1089.900024,1084.780029,1085.199951,1100.089966,1104.609985,1078.300049,1059.790039,1059.780029,1084.099976,1087.199951,1102.839966,1118.859985,1115.800049,1118.540039,1120.310059,1118.329956,1139.089966,1141.209961,1142.23999,1138.650024,1151.060059,1142.660034,1137.030029,1150.339966,1157.420044,1149.5,1128.52002,1140.199951,1139.449951,1129.900024,1143.77002,1170.349976,1167.099976,1158.310059,1139.930054,1136.76001,1137.069946,1119.380005,1123.089966,1134.359985,1142.920044,1149.560059,1139.930054,1144.890015,1144.650024,1149.369995,1157.130005,1161.02002,1148.079956,1154.670044,1165.27002,1172.51001,1164.890015,1160.709961,1155.140015,1156.550049,1145.599976,1138.410034,1146.189941,1127.569946,1138.880005,1127.579956,1119.310059,1128.180054,1132.150024,1133.280029,1133.060059,1100.640015,1113.569946,1130.199951,1122.199951,1094.439941,1090.02002,1083.51001,1080.170044,1096.219971,1111.939941,1107.5,1118.51001,1116.47998,1104.180054,1083.339966,1097.97998,1080.949951,1089.839966,1109.430054,1109.380005,1109.890015,1106.72998,1131.780029,1153.839966,1146.140015,1162.77002,1157.540039,1164.310059,1168.26001,1165.579956,1154.089966,1153.040039,1166.160034,1165.550049,1170.290039,1151.849976,1153.589966,1148.699951,1131.869995,1138.48999,1144.579956,1147.390015,1146.540039,1136.76001,1125.400024,1126.339966,1122.72998,1125.290039,1117.800049,1130.469971,1103.689941,1111.01001,1102.550049,1128.369995,1126.069946,1124.469971,1125.170044,1107.829956,1100.959961,1093.140015,1091.47998,1076.319946,1065.449951,1076.920044,1086.459961,1084.560059,1073.430054,1052.670044,1049.48999,1088.849976,1073.01001,1054.98999,1074.560059,1097.280029,1091.069946,1098.22998,1106.589966,1091.880005,1079.880005,1086.02002,1097.079956,1083.819946,1074.550049,1067.660034,1064.660034,1067.140015,1040.680054,1040.689941,1049.900024,1029.150024,1027.530029,1030.73999,1013.26001,1020.26001,1009.559998,1007.27002,1036.170044,1037.140015,1019.98999,1006.289978,989.140015,992.719971,976.140015,973.530029,990.640015,989.820007,968.650024,948.090027,953.98999,989.030029,976.97998,952.830017,920.469971,927.369995,921.390015,917.929993,901.049988,905.450012,881.559998,847.76001,819.849976,797.710022,843.419983,838.679993,852.840027,898.960022,902.780029,911.619995,884.400024,864.23999,834.599976,859.570007,876.77002,898.72998,908.640015,903.799988,884.210022,919.619995,930.25,928.77002,950.700012,937.429993,949.359985,962.700012,940.859985,947.950012,934.820007,917.869995,917.799988,916.070007,878.02002,893.400024,879.150024,893.919983,902.960022,910.630005,909.450012,886.909973,889.809998,891.099976,873.52002,869.460022,843.320007,845.390015,833.700012,819.27002,839.659973,854.950012,827.369995,815.280029,843.77002,827.909973,818.950012,800.580017,785.280029,798.549988,776.76001,803.919983,835.320007,841.440002,881.27002,860.02002,879.200012,884.390015,899.719971,890.159973,896.140015,882.5,897.650024,890.22998,882.150024,890.710022,885.76001,900.960022,908.349976,915.390015,923.76001,902.650024,894.73999,876.190002,882.950012,882.530029,904.27002,909.830017,900.359985,896.73999,914.150024,933.76001,930.549988,932.869995,913.309998,938.869995,936.309998,934.530029,920.75,917.580017,906.549988,912.22998,892,904.450012,904.960022,901.580017,889.47998,910.400024,902.98999,890.02002,884.25,895.73999,897.380005,892.469971,889.659973,875.400024,879.390015,879.820007,909.030029,908.590027,929.01001,922.929993,909.929993,927.580017,927.570007,926.26001,931.659973,918.219971,914.599976,901.780029,887.619995,878.359985,887.340027,861.400024,847.47998,858.539978,864.359985,844.609985,855.700012,860.320007,848.200012,843.590027,838.150024,829.690002,835.969971,829.200012,818.679993,817.369995,834.890015,851.169983,845.130005,837.099976,848.169983,832.580017,838.570007,827.549988,837.280029,841.150024,834.809998,821.98999,829.849976,822.099976,828.890015,807.47998,800.72998,804.190002,831.890015,833.27002,862.789978,866.450012,874.02002,875.840027,895.789978,864.22998,874.73999,869.950012,868.52002,863.5,848.179993,858.47998,880.900024,876.450012,878.849976,879.929993,878.289978,865.98999,871.580017,868.299988,885.22998,890.809998,879.909973,893.580017,892.01001,911.369995,919.02002,911.429993,898.809998,914.840027,917.840027,916.919983,916.299988,930.080017,926.549988,934.390015,929.619995,920.27002,933.409973,945.109985,942.299988,939.280029,946.669983,944.299988,920.77002,919.72998,923.419983,931.869995,933.219971,951.47998,953.219971,949.640015,963.590027,967,971.559998,986.23999,990.140015,987.76001,975.929993,984.840027,997.47998,998.51001,988.609985,1010.73999,1011.659973,1010.090027,994.700012,995.690002,981.640015,983.450012,975.320007,985.820007,976.219971,974.5,982.320007,993.75,985.700012,1004.419983,1007.840027,1002.210022,988.700012,998.140015,1003.859985,1000.419983,994,981.72998,993.320007,978.799988,988.109985,988.609985,981.599976,998.679993,996.52002,989.280029,987.48999,990.309998,980.150024,982.820007,965.460022,967.080017,974.119995,977.590027,980.590027,990.349976,984.030029,990.51001,990.669983,999.73999,1002.349976,1000.299988,1003.27002,993.059998,993.710022,996.72998,996.789978,1002.840027,1008.01001,1021.98999,1026.27002,1027.969971,1021.390015,1031.640015,1023.169983,1010.919983,1016.419983,1018.630005,1014.809998,1029.319946,1025.969971,1039.579956,1036.300049,1022.820007,1029.030029,1009.380005,1003.27002,996.849976,1006.580017,995.969971,1018.219971,1020.23999,1029.849976,1034.349976,1039.25,1033.780029,1038.72998,1038.060059,1045.349976,1049.47998,1046.76001,1050.069946,1039.319946,1044.680054,1046.030029,1030.359985,1033.77002,1028.910034,1031.130005,1046.790039,1048.109985,1046.939941,1050.709961,1059.02002,1053.25,1051.810059,1058.050049,1053.209961,1047.109985,1046.569946,1058.560059,1058.410034,1050.349976,1043.630005,1034.150024,1042.439941,1033.650024,1035.280029,1052.079956,1053.890015,1058.449951,1058.199951,1070.119995,1066.619995,1064.72998,1069.719971,1061.5,1069.300049,1060.180054,1059.050049,1071.209961,1074.140015,1068.040039,1075.130005,1076.47998,1089.180054,1088.660034,1092.939941,1096.02002,1094.040039,1095.890015,1109.47998,1109.640015,1111.920044,1108.47998,1122.219971,1123.670044,1126.329956,1131.920044,1121.859985,1127.22998,1121.219971,1130.52002,1132.050049,1139.829956,1138.77002,1147.619995,1143.939941,1141.550049,1155.369995,1144.050049,1128.47998,1134.109985,1131.130005,1135.26001,1136.030029,1126.52002,1128.589966,1142.76001,1139.810059,1145.540039,1157.76001,1152.109985,1145.810059,1156.98999,1151.819946,1147.060059,1144.109985,1140.98999,1139.089966,1143.670044,1145.800049,1144.939941,1155.969971,1149.099976,1151.030029,1154.869995,1156.859985,1147.199951,1140.579956,1123.890015,1106.780029,1120.569946,1104.48999,1110.699951,1123.75,1122.319946,1109.780029,1095.400024,1093.949951,1091.329956,1109.189941,1108.060059,1122.469971,1127,1126.209961,1132.170044,1141.810059,1150.569946,1148.160034,1140.530029,1139.319946,1145.199951,1129.439941,1128.170044,1128.839966,1134.560059,1135.819946,1118.150024,1124.089966,1139.930054,1140.599976,1135.530029,1138.109985,1122.410034,1113.890015,1107.300049,1117.48999,1119.550049,1121.530029,1113.98999,1098.699951,1087.119995,1095.449951,1097.280029,1096.439941,1095.699951,1084.099976,1091.48999,1088.680054,1089.189941,1093.560059,1095.410034,1113.050049,1114.939941,1121.280029,1120.680054,1121.199951,1124.98999,1116.640015,1122.5,1140.420044,1142.180054,1131.329956,1136.469971,1125.290039,1132.01001,1133.560059,1132.050049,1135.02002,1130.300049,1134.410034,1144.060059,1140.650024,1134.430054,1133.349976,1136.199951,1140.839966,1128.939941,1125.380005,1116.209961,1118.329956,1109.109985,1112.810059,1114.349976,1115.140015,1111.469971,1106.689941,1101.390015,1100.900024,1108.670044,1093.880005,1096.839966,1086.199951,1084.069946,1094.829956,1095.420044,1100.430054,1101.719971,1106.619995,1099.689941,1098.630005,1080.699951,1063.969971,1065.219971,1079.040039,1075.790039,1063.22998,1064.800049,1079.339966,1081.709961,1095.170044,1091.22998,1098.349976,1095.680054,1096.189941,1104.959961,1105.089966,1107.77002,1099.150024,1104.23999,1105.910034,1118.310059,1113.630005,1121.300049,1116.27002,1118.380005,1123.920044,1125.819946,1128.329956,1120.369995,1123.5,1128.550049,1122.199951,1129.300049,1113.560059,1108.359985,1110.109985,1103.52002,1110.060059,1114.800049,1114.579956,1131.5,1135.170044,1134.47998,1142.050049,1130.650024,1122.140015,1124.390015,1121.839966,1113.650024,1103.290039,1108.199951,1114.02002,1103.22998,1103.660034,1106.48999,1095.73999,1094.810059,1111.089966,1125.339966,1127.439941,1130.199951,1130.51001,1130.540039,1143.199951,1161.670044,1166.170044,1164.890015,1164.079956,1162.910034,1173.47998,1184.170044,1183.810059,1175.430054,1181.939941,1183.550049,1170.339966,1177.23999,1176.939941,1181.76001,1182.650024,1178.569946,1173.780029,1191.369995,1190.329956,1191.170044,1190.25,1177.069946,1182.810059,1189.23999,1188,1198.680054,1203.380005,1205.719971,1203.209961,1194.199951,1194.650024,1205.449951,1209.569946,1210.130005,1204.920044,1213.540039,1213.449951,1213.550049,1211.920044,1202.079956,1188.050049,1183.73999,1187.890015,1186.189941,1190.25,1182.98999,1187.699951,1177.449951,1184.52002,1195.97998,1184.630005,1175.410034,1167.869995,1163.75,1168.410034,1174.069946,1174.550049,1171.359985,1181.27002,1189.410034,1193.189941,1189.890015,1203.030029,1201.719971,1202.300049,1191.98999,1197.01001,1205.300049,1206.140015,1210.119995,1210.339966,1200.75,1201.589966,1184.160034,1190.800049,1200.199951,1211.369995,1203.599976,1210.410034,1210.079956,1210.469971,1222.119995,1225.310059,1219.430054,1207.01001,1209.25,1200.079956,1206.829956,1197.75,1188.069946,1190.209961,1189.650024,1183.780029,1171.709961,1172.530029,1171.420044,1174.280029,1165.359985,1181.410034,1180.589966,1172.790039,1176.119995,1181.390015,1184.069946,1191.140015,1181.199951,1181.209961,1187.76001,1173.790039,1162.050049,1142.619995,1145.97998,1152.780029,1137.5,1159.949951,1152.119995,1162.099976,1151.73999,1156.380005,1143.219971,1156.849976,1162.160034,1161.170044,1175.650024,1172.630005,1171.349976,1178.839966,1166.219971,1171.109985,1159.359985,1154.050049,1165.689941,1173.800049,1185.560059,1191.079956,1189.280029,1193.859985,1194.069946,1190.01001,1197.619995,1198.780029,1191.5,1202.27002,1204.290039,1196.02002,1197.51001,1197.26001,1194.670044,1200.930054,1198.109985,1200.819946,1203.910034,1206.550049,1210.930054,1216.959961,1216.099976,1213.609985,1213.880005,1200.72998,1191.569946,1190.689941,1201.569946,1199.849976,1191.329956,1194.439941,1204.98999,1194.939941,1197.869995,1211.859985,1219.439941,1222.209961,1223.290039,1226.5,1227.920044,1221.130005,1229.349976,1235.199951,1227.040039,1233.680054,1229.030029,1231.160034,1236.790039,1243.719971,1234.180054,1235.349976,1244.119995,1245.040039,1235.859985,1226.420044,1223.130005,1231.380005,1229.130005,1237.810059,1230.400024,1233.869995,1219.339966,1220.23999,1219.02002,1219.709961,1221.72998,1217.569946,1209.589966,1212.400024,1205.099976,1212.280029,1208.410034,1220.329956,1221.589966,1218.02002,1233.390015,1236.359985,1231.670044,1241.47998,1240.569946,1231.199951,1227.160034,1228.420044,1237.910034,1231.02002,1221.339966,1210.199951,1214.619995,1215.290039,1215.630005,1215.660034,1216.890015,1227.680054,1228.810059,1226.699951,1214.469971,1196.390015,1191.48999,1195.900024,1187.329956,1184.869995,1177.680054,1176.839966,1186.569946,1190.099976,1178.140015,1195.76001,1177.800049,1179.589966,1199.380005,1196.540039,1191.380005,1178.900024,1198.410034,1207.01001,1202.76001,1214.76001,1219.939941,1220.140015,1222.810059,1218.589966,1220.650024,1230.959961,1234.719971,1233.76001,1229.01001,1231.209961,1242.800049,1248.27002,1254.849976,1261.22998,1265.609985,1268.25,1257.459961,1257.47998,1249.47998,1264.670044,1265.079956,1262.089966,1263.699951,1257.369995,1255.839966,1259.369995,1260.430054,1267.430054,1272.73999,1270.939941,1267.319946,1259.920044,1259.619995,1262.790039,1268.119995,1268.660034,1256.540039,1258.170044,1254.420044]]},"evals":["attrs.interactionModel"],"jsHooks":[]}</script>
+<hr />
+</div>
+</div>
+<div id="computing-with-probabilities-and-distributions" class="section level1">
+<h1><span class="header-section-number">5</span> computing with probabilities and distributions</h1>
+<p>Many statistics text books use a coin flipping example as a gentle introduction to the binomial distribution. We would like to achieve the following tasks:</p>
+<ol style="list-style-type: decimal">
+<li>sample from a binary vector, e.g. c(0,1) N times, possibly with <span class="math inline">\(p \neq 0.5\)</span></li>
+<li>compute the mean or sum</li>
+<li>repeat steps 1 and 2 MANY times, e.g. M=1000</li>
+<li>possibly plot a histogram and compute tail probabilities</li>
+<li>somehow pass some of these measures to the user</li>
+</ol>
+<p>The R code would look a bit like this:</p>
+<pre class="r"><code>N=40;M=1000;p=0.5;Head2Tail=0.7
+  set.seed(123)
+  #initialize parameters:
+  coin = c(0,1)#values to sample from
+  xm = vector();#sample mean or sum
+  #loop
+  for (i in 1:M){
+    x = sample(coin, N, rep=TRUE, prob  = c(1-p,p))
+    xm[i] = mean(x)
+  }
+  hist(xm)
+  #get the 5% and 95% quantiles:
+  q = quantile(xm,c(0.05,0.95))
+  #add vertical lines:
+  abline(v=q,col=2)</code></pre>
+<p><img src="Day1_files/figure-html/unnamed-chunk-25-1.png" width="576" /></p>
+<pre class="r"><code>  pObs = sum(xm &gt;= Head2Tail) + sum(xm &lt;= 1-Head2Tail)
+  
+  pObs = sum(xm &gt;= Head2Tail | xm &lt;= 1-Head2Tail)
+  #pObs = sum(xm &gt;= Head2Tail &amp; xm &lt;= 1-Head2Tail)</code></pre>
+<div id="task-change-the-code-above-into-a-function" class="section level3">
+<h3><span class="header-section-number">5.0.1</span> Task: Change the code above into a function</h3>
+</div>
+<div id="binomial-and-normal-distributions" class="section level2">
+<h2><span class="header-section-number">5.1</span> Binomial and Normal Distributions</h2>
+<p>All standard distributions such as normal, binomial, possion, gamma etc. are built into R. Each distribution comes in 4 version:</p>
+<ol style="list-style-type: decimal">
+<li><em>Density</em>: <strong>d</strong>norm(), <strong>d</strong>binom(), <strong>d</strong>pois()</li>
+<li><em>distribution</em>: <strong>p</strong>norm(), <strong>p</strong>binom(), <strong>p</strong>pois()</li>
+<li><em>quantile</em>: <strong>q</strong>norm(), <strong>q</strong>binom(), <strong>q</strong>pois()</li>
+<li><em>random generation</em>: <strong>r</strong>norm(), <strong>r</strong>binom(), <strong>r</strong>pois()</li>
+</ol>
+<p>For example:</p>
+<pre class="r"><code>qnorm(0.975)</code></pre>
+<pre><code>## [1] 1.96</code></pre>
+<pre class="r"><code>pnorm(-1.96)</code></pre>
+<pre><code>## [1] 0.025</code></pre>
+<pre class="r"><code>hist(rnorm(500))</code></pre>
+<p><img src="Day1_files/figure-html/unnamed-chunk-26-1.png" width="576" /></p>
+<pre class="r"><code># Compute P(45 &lt; X &lt; 55) for X Binomial(100,0.5)
+sum(dbinom(46:54, 100, 0.5))</code></pre>
+<pre><code>## [1] 0.632</code></pre>
+<pre class="r"><code># Compute P( X &lt; 55) for X Binomial(100,0.5)
+pbinom(54, 100, 0.5)</code></pre>
+<pre><code>## [1] 0.816</code></pre>
+<div id="task-create-an-rmd-file-that-contains-text-code-and-figures-answering-the-following-questions" class="section level4">
+<h4><span class="header-section-number">5.1.0.1</span> Task: Create an Rmd file that contains text, code and figures answering the following questions:</h4>
+<ol style="list-style-type: decimal">
+<li><p>Random Walker: Imagine you take a succession of 40 random left/right steps of each 1m length. What is the probability that you end up at least 10 meter away from the center?</p></li>
+<li><p>Repeat the exercise with 400 steps and 100 meters.</p></li>
+<li><p>Size matters: insurance company A insures 100 cars, company B 400 cars. The probability of a car being stolen is 10%. Compute the probabilities that more than 15% of the respective fleets are stolen.</p></li>
+<li><p>Faced with a mutliple choice test containing 20 question with 4 choices each you decide in desparation to just guess all answers. What is the probability that you will pass, i.e. get at least 10 correct answers?</p></li>
+<li><p>At a certain intersection, the light for eastbound traffic is red for <span class="math inline">\(15\)</span> seconds, yellow for <span class="math inline">\(5\)</span> seconds, and green for <span class="math inline">\(30\)</span> seconds. Find the probability that out of the next twenty eastbound cars that arrive randomly at the light, fewer than three will be stopped by a red light.</p></li>
+</ol>
+<hr />
+</div>
+</div>
+</div>
+<div id="file-io" class="section level1">
+<h1><span class="header-section-number">6</span> file I/O</h1>
+<ul>
+<li><code>scan()</code></li>
+<li><code>read.csv()</code>, <code>read.table()</code></li>
+<li><code>load()</code></li>
+<li>“Import Dataset”</li>
+</ul>
+<hr />
+<div id="task-swirl-exercises" class="section level4">
+<h4><span class="header-section-number">6.0.0.1</span> Task: swirl exercises</h4>
+</div>
+</div>
+
+
+
+</div>
+</div>
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.header').parent('thead').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

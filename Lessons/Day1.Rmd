@@ -1,0 +1,466 @@
+---
+title: "Day 1: Basic R programming"
+author: "Markus Loecher, Berlin School of Economics and Law"
+output:
+   html_document:
+    #variant: markdown_github
+    toc: true
+    number_sections: true
+    self_contained: no
+    toc_depth: 2
+    toc_float: true
+    fig_caption: true
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.width = 6, fig.height = 4)
+options(digits=3)
+```
+
+
+# data types, vectors, matrices, strings, factors
+
+We need to be very clear on the different **data types** in R!
+
+**numbers**:
+
+```{r}
+x = 2
+y = 3
+x+y
+```
+
+
+**vectors**:
+
+```{r}
+x = c(1,2,3)
+y = 10:12
+#or 
+y = seq(10,12,by=1)
+#operations on x
+x[2]
+x[-2]
+2*x
+x^2
+#built-in functions
+mean(x)
+sum(x)
+#vectorized operations
+x+y
+#bare bones graphics
+plot(x,y); grid()
+barplot(x); grid()
+```
+
+**matrices**:
+
+```{r}
+x = matrix(1:9, ncol=3)
+colnames(x) = c("var1","var2","var3")
+x
+dim(x)
+x[2,3]
+x[2,"var1"]
+colMeans(x)
+```
+
+**data frames**:
+
+```{r}
+x = data.frame(a = 1:3, l = LETTERS[1:3], r = runif(3))
+x
+x$l
+
+```
+
+**lists**:
+
+```{r}
+y = list(x = matrix(1:9, ncol=3), l = LETTERS[1:3], r = NA)
+y
+
+```
+
+
+**strings**:
+
+```{r}
+x = "chevrolet"
+class(x)
+```
+
+### factors in R
+
+
+Try class("chevrolet")
+
+In the Auto set take a look at the data class of the name column:
+
+```{r,echo=TRUE}
+library(ISLR)
+data(Auto)
+
+class(Auto$name)
+```
+
+Try
+
+as.numeric("chevrolet")
+
+Try 
+
+as.numeric(head(Auto$name))
+
+
+Look at the help file for read.csv and look for the argument *stringsAsFactors*
+
+You can force a variable to be a factor:
+
+```{r,echo=TRUE}
+Auto$cylinders = as.factor(Auto$cylinders)
+```
+
+#### Understanding factors is extremely important for modeling ! (=dummy variables)
+
+
+**dates/times**:
+
+```{r}
+x = Sys.Date()
+#or
+as.Date("2017-03-20")
+y = Sys.time()
+x
+y
+class(x)
+class(y)
+
+as.numeric(x)
+as.numeric(y)
+
+#or
+unclass(x)
+unclass(y)
+```
+
+
+------------------------------
+
+Let us look at some real data now. 
+We load in the *S&P Stock Market Data* dataset from the *ISLR* library:
+
+```{r}
+library(ISLR)
+data(Smarket)
+
+head(Smarket)
+
+mean(Smarket$Lag1)
+```
+
+* **Year** The year that the observation was recorded
+
+* **Lagi**: Percentage return for i days previous
+
+* **Volume**: Volume of shares traded (number of daily shares traded in billions)
+
+* **Today**: Percentage return for today
+
+* **Direction**: A factor with levels Down and Up indicating whether the market had a positive or negative return on a given day
+
+
+This is a data frame with **mixed data types**:
+
+
+```{r}
+dim(Smarket)
+class(Smarket)
+class(Smarket$Lag1)
+
+```
+
+Let us add a proper date variable:
+```{r}
+Smarket$day = as.Date("2001-01-01") + 1:1250
+```
+
+---------------------------------
+
+# control structures (for, if else, while)
+
+
+In a non-vectorized language the above command would have necessitated a loop!
+Since they are useful on their own in R, we will reproduce the *day* column:
+
+```{r}
+#initialize
+Smarket$day = NA
+
+for (i in 1:1250) Smarket$day[i] = as.Date("2001-01-01") + i
+
+#or with multiple statements
+for (i in 1:1250) {
+  Smarket$day[i] = as.Date("2001-01-01") + i
+  if (Smarket$day[i] == "2001-07-04") cat("The return on July 4th was ", Smarket$Today[i], "\n")
+}
+
+```
+
+### Wait a second, shouldn't we exclude weekends and holidays?
+
+Can we download those from Yahoo finance?
+
+```{r, message=FALSE}
+library(tseries)
+ # sp500 = get.hist.quote(instrument = "^gspc", "2001-01-02", "2005-12-30",
+ #                 quote = c("Open", "Volume"))
+ #  save(sp500, file="sp500.rda")
+load("sp500.rda")
+n=nrow(sp500)
+#can we compute percent returns?
+sp500$Today = round(100*diff(sp500[,"Open"])/sp500[-n,"Open"],3)
+colnames(sp500)[1]= "Open"
+```
+
+### Adding lagged variables
+
+```{r}
+sp500$Lag1 = lag(sp500$Today,-1)
+sp500$Lag2 = lag(sp500$Today,-2)
+sp500$Lag3 = lag(sp500$Today,-3)
+sp500$Lag4 = lag(sp500$Today,-4)
+sp500$Lag5 = lag(sp500$Today,-5)
+```
+
+
+### Task: Use a for loop to add lagged variables
+
+-----------------------------------
+
+# functions, R markdown
+
+So far we have written code that is executed either line by line or as a whole but lacks any "modular" or "reusable" attribute. 
+If you want to build anything more complex it is essential to use "building blocks" that work on their own and can be connected to or used by other modules.
+
+You have been using the many functions that are part of R already, such as *hist()*, *boxplot()*, etc. 
+Clearly, each of these function consists of many lines of codes that you are actually not all that interested in. 
+R being open source, you can just type the name of many functions and you will see the source code, try e.g. 
+```{r}
+sd
+```
+
+Functions consist of
+
+1. a name/title
+2. arguments
+3. body
+4. return values
+
+For example, if you were to write your own summing function, it could look like this 
+
+```{r}
+mysum = function(a=4,b=3){
+  c = a+b
+  print(c)
+}
+
+mysum(10,20)
+
+c = mysum(b=2,a=3)
+```
+
+
+Add a few checks and a return value:
+
+```{r}
+mysum = function(a=4,b=3){
+  #stopifnot(is.numeric(a))
+  if (!is.numeric(a)){
+    print("a has to be numeric !!!!!! you idiot")
+    return()
+  }
+  c = a+b
+  return(c)
+}
+
+mysum("Karl",20)
+
+```
+
+
+Comments:
+
+1. default values
+2. named arguments
+3. invisible/optional returns
+4. local variables
+
+
+-------------------------
+
+
+# basic plotting 
+
+### scatter plots
+
+```{r}
+
+plot(mpg ~ weight, data = Auto,col = rgb(0,0,1,0.5), pch=20);grid()
+
+##ggplot version
+library(ggplot2)
+p <- ggplot(Auto, aes(weight, mpg))
+p + geom_point(color="firebrick", alpha=0.5)
+```
+
+
+### histograms
+
+Back to the Smarket data: can we take a look at the distribution of the data?
+
+```{r, fig.width=10}
+par(mfrow=c(1,2))
+hist(Smarket$Lag1)
+hist(Smarket$Volume)
+
+```
+
+### boxplots
+
+```{r,echo=TRUE}
+library(ISLR)
+data(Auto)
+
+boxplot(mpg ~ cylinders, data=Auto, xlab="cylinders", ylab="mpg");grid()
+#notched version - for a different data set
+boxplot(mpg ~ cylinders, data=subset(Auto, cylinders %in% c(4,6,8)), xlab="cylinders", ylab="mpg", notch=TRUE);grid()
+##ggplot version
+library(ggplot2)
+p <- ggplot(Auto, aes(factor(cylinders), mpg))
+p + geom_boxplot(fill="darkseagreen4")
+
+```
+
+### violin plots
+
+```{r}
+
+p + geom_violin() + geom_jitter(alpha=0.5, width=0.3, aes(color=cylinders))
+```
+
+
+### time series plots
+
+```{r}
+plot(sp500[,1:2])
+```
+
+### interactive paning and zooming:
+
+```{r}
+library(dygraphs)
+dy=dygraph(sp500[,"Open"])
+dyRangeSelector(dy)
+```
+
+
+--------------------------
+
+# computing with probabilities and distributions
+
+
+
+Many statistics text books use a coin flipping example as a gentle introduction to the binomial distribution. We would like to achieve the following tasks:
+
+1. sample from a binary vector, e.g. c(0,1) N times, possibly with $p \neq 0.5$
+2. compute the mean or sum
+3. repeat steps 1 and 2 MANY times, e.g. M=1000
+4. possibly plot a histogram and compute tail probabilities
+5. somehow pass some of these measures to the user
+
+The R code would look a bit like this:
+```{r}
+N=40;M=1000;p=0.5;Head2Tail=0.7
+  set.seed(123)
+  #initialize parameters:
+  coin = c(0,1)#values to sample from
+  xm = vector();#sample mean or sum
+  #loop
+  for (i in 1:M){
+    x = sample(coin, N, rep=TRUE, prob  = c(1-p,p))
+    xm[i] = mean(x)
+  }
+  hist(xm)
+  #get the 5% and 95% quantiles:
+  q = quantile(xm,c(0.05,0.95))
+  #add vertical lines:
+  abline(v=q,col=2)
+  pObs = sum(xm >= Head2Tail) + sum(xm <= 1-Head2Tail)
+  
+  pObs = sum(xm >= Head2Tail | xm <= 1-Head2Tail)
+  #pObs = sum(xm >= Head2Tail & xm <= 1-Head2Tail)
+  
+```
+
+### Task: Change the code above into a function 
+
+## Binomial and Normal Distributions
+
+All standard distributions such as normal, binomial, possion, gamma etc. are built into R.
+Each distribution comes in 4 version:
+
+1. *Density*:  **d**norm(), **d**binom(), **d**pois()
+2. *distribution*: **p**norm(), **p**binom(), **p**pois()
+3. *quantile*: **q**norm(), **q**binom(), **q**pois()
+4. *random generation*:   **r**norm(), **r**binom(), **r**pois()
+
+For example:
+
+```{r}
+
+qnorm(0.975)
+pnorm(-1.96)
+hist(rnorm(500))
+
+
+# Compute P(45 < X < 55) for X Binomial(100,0.5)
+sum(dbinom(46:54, 100, 0.5))
+# Compute P( X < 55) for X Binomial(100,0.5)
+pbinom(54, 100, 0.5)
+
+```
+
+
+#### Task: Create an Rmd file that contains text, code and figures answering the following questions:
+
+1. Random Walker: Imagine you take a succession of 40 random left/right steps of each 1m length. What is the probability that you end up at least 10 meter away from the center? 
+
+2. Repeat the exercise with 400 steps and 100 meters.
+
+3. Size matters: insurance company A insures 100 cars, company B 400 cars. The probability of a car being stolen is 10%. Compute the probabilities that more than 15% of the respective fleets are stolen.
+
+4. Faced with a mutliple choice test containing 20 question with 4 choices each you decide in desparation to just guess all answers. What is the probability that you will pass, i.e. get at least 10 correct answers?
+
+
+5. At a certain intersection, the light for eastbound traffic is red for $15$ seconds, yellow for $5$ seconds, and green for $30$ seconds.  Find the probability that out of the next twenty eastbound cars that arrive randomly at the light, fewer than three will be stopped by a red light.
+
+
+-----------------------------------
+
+# file I/O
+
+* `scan()`
+* `read.csv()`, `read.table()` 
+* `load()`
+* "Import Dataset"
+
+-----------------------------------
+
+#### Task: swirl exercises
+
+
+
+
+
