@@ -4,7 +4,7 @@ About this workshop
 Goals
 -----
 
-This 5 day workshop is intended to empower participants to perform serious statistical data analysis with the R statistical software. It is an attempt to provide the solid foundation needed to begin using R in your data analysis and also give you an introduction to machine learning and data science. No previous experience is required, though some basic programming or data science exposure is helpful.
+This 5 day workshop is intended to empower participants to perform serious statistical modeling with the R statistical software. It is an attempt to provide the solid foundation needed to begin using R in your data analysis and also give you an introduction to machine learning and data science. No previous experience is required, though some basic programming or data science exposure is helpful.
 
 Agenda
 ======
@@ -57,13 +57,11 @@ PART II: INTRODUCTION TO MACHINE LEARNING
 
 ### Day 5
 
--   Non-linear Regression?
+-   Non-linear Regression
 -   Polynomial regression
--   splines
--   general additive models
+-   splines, general additive models
 -   Tree-based Methods
--   Decision trees
--   Random forests
+-   Decision trees, Random forests
 
 -   Support Vector Machines
 -   Unsupervised Learning
