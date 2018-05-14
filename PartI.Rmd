@@ -1,0 +1,1363 @@
+---
+title: "Part I, INTRODUCTION TO DATA ANALYSIS WITH R"
+author: "Markus Loecher, Berlin School of Economics and Law"
+output:
+   html_document:
+    #variant: markdown_github
+    toc: true
+    number_sections: true
+    self_contained: yes
+    toc_depth: 2
+    toc_float: true
+    fig_caption: true
+    code_folding: hide
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+
+source("SetupI.R")
+baseR = FALSE
+```
+
+
+# Day 1: Basic R programming
+
+## Data Types 
+
+#### vectors, matrices, strings, factors
+
+We need to be very clear on the different **data types** in R!
+
+**numbers**:
+
+```{r}
+x = 2
+y = 3
+x+y
+```
+
+
+**vectors**:
+
+```{r}
+x = c(1,2,3)
+y = 10:12
+#or 
+y = seq(10,12,by=1)
+#operations on x
+x[2]
+x[-2]
+2*x
+x^2
+#built-in functions
+mean(x)
+sum(x)
+#vectorized operations
+x+y
+#bare bones graphics
+plot(x,y); grid()
+barplot(x); grid()
+```
+
+**matrices**:
+
+```{r}
+x = matrix(1:9, ncol=3)
+colnames(x) = c("var1","var2","var3")
+x
+dim(x)
+x[2,3]
+x[2,"var1"]
+colMeans(x)
+```
+
+**data frames**:
+
+```{r}
+x = data.frame(a = 1:3, l = LETTERS[1:3], r = runif(3))
+x
+x$l
+
+```
+
+**lists**:
+
+```{r}
+y = list(x = matrix(1:9, ncol=3), l = LETTERS[1:3], r = NA)
+y
+
+```
+
+
+**strings**:
+
+```{r}
+x = "chevrolet"
+class(x)
+```
+
+### factors in R
+
+
+Try class("chevrolet")
+
+In the Auto set take a look at the data class of the name column:
+
+```{r,echo=TRUE}
+library(ISLR)
+data(Auto)
+
+class(Auto$name)
+```
+
+Try
+
+as.numeric("chevrolet")
+
+Try 
+
+as.numeric(head(Auto$name))
+
+
+Look at the help file for read.csv and look for the argument *stringsAsFactors*
+
+You can force a variable to be a factor:
+
+```{r,echo=TRUE}
+Auto$cylinders = as.factor(Auto$cylinders)
+```
+
+#### Understanding factors is extremely important for modeling ! (=dummy variables)
+
+
+**dates/times**:
+
+```{r}
+x = Sys.Date()
+#or
+as.Date("2017-03-20")
+y = Sys.time()
+x
+y
+class(x)
+class(y)
+
+as.numeric(x)
+as.numeric(y)
+
+#or
+unclass(x)
+unclass(y)
+```
+
+
+------------------------------
+
+Let us look at some real data now. 
+We load in the *S&P Stock Market Data* dataset from the *ISLR* library:
+
+```{r}
+library(ISLR)
+data(Smarket)
+
+head(Smarket)
+
+mean(Smarket$Lag1)
+```
+
+* **Year** The year that the observation was recorded
+
+* **Lagi**: Percentage return for i days previous
+
+* **Volume**: Volume of shares traded (number of daily shares traded in billions)
+
+* **Today**: Percentage return for today
+
+* **Direction**: A factor with levels Down and Up indicating whether the market had a positive or negative return on a given day
+
+
+This is a data frame with **mixed data types**:
+
+
+```{r}
+dim(Smarket)
+class(Smarket)
+class(Smarket$Lag1)
+
+```
+
+Let us add a proper date variable:
+```{r}
+Smarket$day = as.Date("2001-01-01") + 1:1250
+```
+
+---------------------------------
+
+## control structures (for, if else, while)
+
+
+In a non-vectorized language the above command would have necessitated a loop!
+Since they are useful on their own in R, we will reproduce the *day* column:
+
+```{r}
+#initialize
+Smarket$day = NA
+
+for (i in 1:1250) Smarket$day[i] = as.Date("2001-01-01") + i
+
+#or with multiple statements
+for (i in 1:1250) {
+  Smarket$day[i] = as.Date("2001-01-01") + i
+  if (Smarket$day[i] == "2001-07-04") cat("The return on July 4th was ", Smarket$Today[i], "\n")
+}
+
+```
+
+### Wait a second, shouldn't we exclude weekends and holidays?
+
+Can we download those from Yahoo finance?
+
+```{r, message=FALSE}
+library(tseries)
+ # sp500 = get.hist.quote(instrument = "^gspc", "2001-01-02", "2005-12-30",
+ #                 quote = c("Open", "Volume"))
+ #  save(sp500, file="sp500.rda")
+load("data/sp500.rda")
+n=nrow(sp500)
+#can we compute percent returns?
+sp500$Today = round(100*diff(sp500[,"Open"])/sp500[-n,"Open"],3)
+colnames(sp500)[1]= "Open"
+```
+
+### Adding lagged variables
+
+```{r}
+sp500$Lag1 = stats::lag(sp500$Today,1)
+sp500$Lag2 = stats::lag(sp500$Today,2)
+sp500$Lag3 = stats::lag(sp500$Today,3)
+sp500$Lag4 = stats::lag(sp500$Today,4)
+sp500$Lag5 = stats::lag(sp500$Today,5)
+```
+
+
+### Task: Use a for loop to add lagged variables
+
+-----------------------------------
+
+## functions, R markdown
+
+So far we have written code that is executed either line by line or as a whole but lacks any "modular" or "reusable" attribute. 
+If you want to build anything more complex it is essential to use "building blocks" that work on their own and can be connected to or used by other modules.
+
+You have been using the many functions that are part of R already, such as *hist()*, *boxplot()*, etc. 
+Clearly, each of these function consists of many lines of codes that you are actually not all that interested in. 
+R being open source, you can just type the name of many functions and you will see the source code, try e.g. 
+```{r}
+sd
+```
+
+Functions consist of
+
+1. a name/title
+2. arguments
+3. body
+4. return values
+
+For example, if you were to write your own summing function, it could look like this 
+
+```{r}
+mysum = function(a=4,b=3){
+  c = a+b
+  print(c)
+}
+
+mysum(10,20)
+
+c = mysum(b=2,a=3)
+```
+
+
+Add a few checks and a return value:
+
+```{r}
+mysum = function(a=4,b=3){
+  #stopifnot(is.numeric(a))
+  if (!is.numeric(a)){
+    print("a has to be numeric !!!!!! you idiot")
+    return()
+  }
+  c = a+b
+  return(c)
+}
+
+mysum("Karl",20)
+
+```
+
+
+Comments:
+
+1. default values
+2. named arguments
+3. invisible/optional returns
+4. local variables
+
+
+-------------------------
+
+
+## basic plotting 
+
+### scatter plots
+
+```{r}
+
+plot(mpg ~ weight, data = Auto,col = rgb(0,0,1,0.5), pch=20);grid()
+
+##ggplot version
+library(ggplot2)
+p <- ggplot(Auto, aes(weight, mpg))
+p + geom_point(color="firebrick", alpha=0.5)
+```
+
+
+### histograms
+
+Back to the Smarket data: can we take a look at the distribution of the data?
+
+```{r, fig.width=10}
+par(mfrow=c(1,2))
+hist(Smarket$Lag1)
+hist(Smarket$Volume)
+
+```
+
+### boxplots
+
+```{r,echo=TRUE}
+library(ISLR)
+data(Auto)
+
+boxplot(mpg ~ cylinders, data=Auto, xlab="cylinders", ylab="mpg");grid()
+#notched version - for a different data set
+boxplot(mpg ~ cylinders, data=subset(Auto, cylinders %in% c(4,6,8)), xlab="cylinders", ylab="mpg", notch=TRUE);grid()
+##ggplot version
+library(ggplot2)
+p <- ggplot(Auto, aes(factor(cylinders), mpg))
+p + geom_boxplot(fill="darkseagreen4")
+
+```
+
+### violin plots
+
+```{r}
+
+p + geom_violin() + geom_jitter(alpha=0.5, width=0.3, aes(color=cylinders))
+```
+
+
+### time series plots
+
+```{r}
+plot(sp500[,1:2])
+```
+
+### interactive paning and zooming:
+
+```{r}
+library(dygraphs)
+dy=dygraph(sp500[,"Open"])
+dyRangeSelector(dy)
+```
+
+
+## file I/O
+
+* `scan()`
+* `read.csv()`, `read.table()` 
+* `load()`
+* "Import Dataset"
+
+-----------------------------------
+
+
+# Day 2 : Basic Data Analysis
+
+## computing with probabilities and distributions
+
+
+
+Many statistics text books use a coin flipping example as a gentle introduction to the binomial distribution. We would like to achieve the following tasks:
+
+1. sample from a binary vector, e.g. c(0,1) N times, possibly with $p \neq 0.5$
+2. compute the mean or sum
+3. repeat steps 1 and 2 MANY times, e.g. M=1000
+4. possibly plot a histogram and compute tail probabilities
+5. somehow pass some of these measures to the user
+
+The R code would look a bit like this:
+```{r}
+N=40;M=1000;p=0.5;Head2Tail=0.7
+  set.seed(123)
+  #initialize parameters:
+  coin = c(0,1)#values to sample from
+  xm = vector();#sample mean or sum
+  #loop
+  for (i in 1:M){
+    x = sample(coin, N, rep=TRUE, prob  = c(1-p,p))
+    xm[i] = mean(x)
+  }
+  hist(xm)
+  #get the 5% and 95% quantiles:
+  q = quantile(xm,c(0.05,0.95))
+  #add vertical lines:
+  abline(v=q,col=2)
+  pObs = sum(xm >= Head2Tail) + sum(xm <= 1-Head2Tail)
+  
+  pObs = sum(xm >= Head2Tail | xm <= 1-Head2Tail)
+  #pObs = sum(xm >= Head2Tail & xm <= 1-Head2Tail)
+  
+```
+
+### Task: Change the code above into a function 
+
+## Binomial and Normal Distributions
+
+All standard distributions such as normal, binomial, possion, gamma etc. are built into R.
+Each distribution comes in 4 version:
+
+1. *Density*:  **d**norm(), **d**binom(), **d**pois()
+2. *distribution*: **p**norm(), **p**binom(), **p**pois()
+3. *quantile*: **q**norm(), **q**binom(), **q**pois()
+4. *random generation*:   **r**norm(), **r**binom(), **r**pois()
+
+For example:
+
+```{r}
+
+qnorm(0.975)
+pnorm(-1.96)
+hist(rnorm(500))
+
+
+# Compute P(45 < X < 55) for X Binomial(100,0.5)
+sum(dbinom(46:54, 100, 0.5))
+# Compute P( X < 55) for X Binomial(100,0.5)
+pbinom(54, 100, 0.5)
+
+```
+
+
+### Task: Create an Rmd file that contains text, code and figures answering the following questions:
+
+1. Random Walker: Imagine you take a succession of 40 random left/right steps of each 1m length. What is the probability that you end up at least 10 meter away from the center? 
+
+2. Repeat the exercise with 400 steps and 100 meters.
+
+3. Size matters: insurance company A insures 100 cars, company B 400 cars. The probability of a car being stolen is 10%. Compute the probabilities that more than 15% of the respective fleets are stolen.
+
+4. Faced with a mutliple choice test containing 20 question with 4 choices each you decide in desparation to just guess all answers. What is the probability that you will pass, i.e. get at least 10 correct answers?
+
+
+5. At a certain intersection, the light for eastbound traffic is red for $15$ seconds, yellow for $5$ seconds, and green for $30$ seconds.  Find the probability that out of the next twenty eastbound cars that arrive randomly at the light, fewer than three will be stopped by a red light.
+
+
+
+### Task: swirl exercises
+
+
+## Data manipulation
+
+### Data: nycflights13
+
+To explore the basic data manipulation verbs of dplyr, we'll start with the built in
+`nycflights13` data frame. This dataset contains all `r nrow(nycflights13::flights)` flights that departed from New York City in 2013. The data comes from the US [Bureau of Transportation Statistics](http://www.transtats.bts.gov/DatabaseInfo.asp?DB_ID=120&Link=0), and is documented in `?nycflights13`
+
+```{r}
+library(nycflights13)
+dim(flights)
+head(flights)
+```
+
+dplyr can work with data frames as is, but if you're dealing with large data, it's worthwhile to convert them to a `tbl_df`: this is a wrapper around a data frame that won't accidentally print a lot of data to the screen.
+
+### Single table verbs
+
+Dplyr aims to provide a function for each basic verb of data manipulation:
+
+* `filter()` (and `slice()`)
+* `arrange()`
+* `select()` (and `rename()`)
+* `distinct()`
+* `mutate()` (and `transmute()`)
+* `summarise()`
+* `sample_n()` (and `sample_frac()`)
+
+If you've used plyr before, many of these will be familar.
+
+### Filter rows with `filter()`
+
+`filter()` allows you to select a subset of rows in a data frame. The first argument is the name of the data frame. The second and subsequent arguments are the expressions that filter the data frame:
+
+For example, we can select all flights on January 1st with:
+
+```{r}
+library(dplyr)
+filter(flights, month == 1, day == 1)
+```
+
+This is equivalent to the more verbose code in base R:
+
+```{r, eval = FALSE}
+flights[flights$month == 1 & flights$day == 1, ]
+```
+
+To select rows by position, use `slice()`:
+
+```{r}
+slice(flights, 1:10)
+```
+
+### Arrange rows with `arrange()`
+
+`arrange()` works similarly to `filter()` except that instead of filtering or selecting rows, it reorders them. It takes a data frame, and a set of column names (or more complicated expressions) to order by. If you provide more than one column name, each additional column will be used to break ties in the values of preceding columns:
+
+```{r}
+arrange(flights, year, month, day)
+```
+
+Use `desc()` to order a column in descending order:
+
+```{r}
+arrange(flights, desc(arr_delay))
+```
+
+
+### Select columns with `select()`
+
+Often you work with large datasets with many columns but only a few are actually of interest to you. `select()` allows you to rapidly zoom in on a useful subset using operations that usually only work on numeric variable positions:
+
+```{r}
+# Select columns by name
+select(flights, year, month, day)
+# Select all columns between year and day (inclusive)
+select(flights, year:day)
+# Select all columns except those from year to day (inclusive)
+select(flights, -(year:day))
+```
+
+
+You can rename variables with `select()` by using named arguments:
+
+```{r}
+select(flights, tail_num = tailnum)
+```
+
+But because `select()` drops all the variables not explicitly mentioned, it's not that useful. Instead, use `rename()`:
+
+```{r}
+rename(flights, tail_num = tailnum)
+```
+
+### Extract distinct (unique) rows
+
+Use `distinct()`to find unique values in a table:
+
+```{r}
+distinct(flights, tailnum)
+distinct(flights, origin, dest)
+```
+
+(This is very similar to `base::unique()` but should be much faster.)
+
+### Add new columns with `mutate()`
+
+Besides selecting sets of existing columns, it's often useful to add new columns that are functions of existing columns.  This is the job of `mutate()`:
+
+```{r}
+mutate(flights,
+  gain = arr_delay - dep_delay,
+  speed = distance / air_time * 60)
+```
+
+mutate allows you to refer to columns that you've just created:
+
+```{r}
+mutate(flights,
+  gain = arr_delay - dep_delay,
+  gain_per_hour = gain / (air_time / 60)
+)
+```
+
+
+### Summarise values with `summarise()`
+
+The last verb is `summarise()`. It collapses a data frame to a single row (this is exactly equivalent to `plyr::summarise()`):
+
+```{r}
+summarise(flights,
+  delay = mean(dep_delay, na.rm = TRUE))
+```
+
+Below, we'll see how this verb can be very useful.
+
+
+### Grouped operations
+
+These verbs are useful on their own, but they become really powerful when you apply them to groups of observations within a dataset. In dplyr, you do this by with the `group_by()` function. It breaks down a dataset into specified groups of rows. When you then apply the verbs above on the resulting object they'll be automatically applied "by group". Most importantly, all this is achieved by using the same exact syntax you'd use with an ungrouped object.
+
+
+In the following example, we split the complete dataset into individual planes and then summarise each plane by counting the number of flights (`count = n()`) and computing the average distance (`dist = mean(Distance, na.rm = TRUE)`) and arrival delay (`delay = mean(ArrDelay, na.rm = TRUE)`). We then use ggplot2 to display the output.
+
+```{r, warning = FALSE, message = FALSE, fig.width = 6}
+by_tailnum <- group_by(flights, tailnum)
+delay <- summarise(by_tailnum,
+  count = n(),
+  dist = mean(distance, na.rm = TRUE),
+  delay = mean(arr_delay, na.rm = TRUE))
+delay <- filter(delay, count > 20, dist < 2000)
+
+# Interestingly, the average delay is only slightly related to the
+# average distance flown by a plane.
+library(ggplot2)
+ggplot(delay, aes(dist, delay)) +
+  geom_point(aes(size = count), alpha = 1/2) +
+  geom_smooth() +
+  scale_size_area()
+```
+
+You use `summarise()` with __aggregate functions__, which take a vector of values and return a single number. There are many useful examples of such functions in base R like `min()`, `max()`, `mean()`, `sum()`, `sd()`, `median()`, and `IQR()`. dplyr provides a handful of others:
+
+* `n()`: the number of observations in the current group
+
+* `n_distinct(x)`:the number of unique values in `x`.
+
+* `first(x)`, `last(x)` and `nth(x, n)` - these work
+  similarly to `x[1]`, `x[length(x)]`, and `x[n]` but give you more control
+  over the result if the value is missing.
+
+For example, we could use these to find the number of planes and the number of flights that go to each possible destination:
+
+```{r}
+destinations <- group_by(flights, dest)
+summarise(destinations,
+  planes = n_distinct(tailnum),
+  flights = n()
+)
+```
+
+
+## Titanic
+
+
+```{r, echo = TRUE }
+train <- read.csv("data/TitanicTrain.csv")
+```
+
+
+The disaster was famous for saving "women and children first", so let's take a look at the Sex and Age variables to see if any patterns are evident. We'll start with the gender of the passengers. After reloading the data into R, take a look at the summary of this variable:
+
+```{r, echo = TRUE }
+round(prop.table(table(train$Sex, train$Survived),1),2)
+```
+
+
+Let's create a new variable, "Child", to indicate whether the passenger is below the age of 18:
+
+```{r, echo = TRUE }
+train$Child <- 0
+train$Child[train$Age < 18] <- 1
+```
+
+Now we want to create a table with both gender and age to see the survival proportions for different subsets.
+Recall the dplyr version of the aggregate function:
+
+```{r, echo = TRUE}
+suppressPackageStartupMessages(require(dplyr))
+summarise(group_by(train, Sex, Child), round(mean(Survived),2), length(Survived))
+
+```
+
+
+While the class variable is limited to a manageable 3 values, the fare is again a continuous variable that needs to be reduced to something that can be easily tabulated. Let's bin the fares into less than $10, between $10 and $20, $20 to $30 and more than $30 and store it to a new variable:
+
+```{r, echo = TRUE}
+train$Fare2 <- '30+'
+ train$Fare2[train$Fare < 30 & train$Fare >= 20] <- '20-30'
+ train$Fare2[train$Fare < 20 & train$Fare >= 10] <- '10-20'
+train$Fare2[train$Fare < 10] <- '<10'
+```
+
+* Use the summarise function to compute the proportions and  in each group defined by child, gender and Fare2:
+
+```{r, echo = FALSE}
+SurvProp = summarise(group_by(train, Child, Fare2, Sex), round(mean(Survived),2), length(Survived))
+
+SurvProp = SurvProp[order(SurvProp$`round(mean(Survived), 2)`),]
+```
+
+* Find strong differences between male/female survival probabilities.
+* Partition your data into even finer subgroups, e.g. age and/or embarkation port and repeat.
+
+```{r, echo = FALSE}
+summarise(group_by(train, Child, Fare2, Sex, Embarked), round(mean(Survived),2), length(Survived))
+
+```
+
+
+## Descriptive statistics
+
+### Measures of Central tendency
+
+```{r}
+
+mean(flights$dep_delay)
+
+mean(flights$dep_delay, na.rm=T)
+
+median(flights$dep_delay, na.rm=T)
+
+#robustness
+mean(flights$dep_delay, na.rm=T, trim = 0.1)
+```
+
+
+### Dispersion measures
+
+Only sample stdev is included!
+
+```{r}
+#var
+
+sd(flights$dep_delay, na.rm=T)
+
+IQR(flights$dep_delay, na.rm=T)
+
+mad(flights$dep_delay, na.rm=T)
+
+```
+
+
+### Descriptive boxplots
+
+```{r}
+#define our own transformation
+require(scales) # trans_new() is in the scales library
+sign_sqrt_trans = function() trans_new("sign_sqrt", function(x) sign(x)*sqrt(abs(x)), function(x) sign(x)*x^2)
+
+```
+
+### Delays by carrier
+
+```{r}
+if (baseR){
+  boxplot(arr_delay ~ carrier, data=flights)
+  grid()
+} else {
+  p = ggplot(flights, aes( carrier,arr_delay))
+  p + geom_boxplot() + coord_trans(y="sign_sqrt") #+ scale_y_sqrt()
+}
+```
+
+There appear to be significant delays by time-of-day:
+
+```{r, fig.width=10}
+if (baseR){
+  boxplot(arr_delay ~ hour, data=flights)
+  grid()
+} else {
+  p = ggplot(flights, aes( factor(hour),arr_delay))
+  p + geom_boxplot() + coord_trans(y="sign_sqrt") #+ scale_y_sqrt()
+}
+
+```
+
+----------------------------
+
+## Basic statistical tests 
+
+I have prepared a data file for you:
+
+```{r, echo=TRUE, fig.width=10}
+print(load("data/BirthWeights.rda"))
+class(x$gender)
+#split the plotting region into 2 columns:
+par(mfrow=c(1,2))
+boxplot(dbirwt ~ gender, data=x)
+hist(x$dbirwt, xlab="birth weight [g]")
+```
+
+### remove outliers
+
+```{r}
+#either:
+ii = which(x$dbirwt> 8000)
+x = x[-ii,]
+
+#or:
+x = subset(x, dbirwt <= 8000)
+
+```
+
+
+### density plot
+
+```{r, echo=TRUE}
+library(ggplot2)
+ggplot(x, aes(dbirwt, fill=gender)) + geom_density(alpha=.5) + 
+  scale_fill_manual(values = c("orange", "purple")) # +   theme(legend.position = "none")
+```
+
+
+### t-test
+
+Can we detect the difference in birth weights?
+
+```{r}
+boys = subset(x, gender == "male")$dbirwt
+girls = subset(x, gender == "female")$dbirwt
+  
+t.test(x=boys, y=girls)
+```
+
+Would a small sample suffice?
+
+```{r}
+set.seed(1234)
+
+b=sample(boys,100);g=sample(girls,100)
+
+t.test(b,g)
+```
+
+What about these non integer degrees of freedom??
+
+
+### F-test for variances
+
+```{r}
+var.test(b,g)
+```
+
+
+### prop-test
+
+```{r}
+(gs = table(train$Sex, train$Survived))
+prop.test(gs)
+
+```
+
+### Exact Binomial Test
+
+```{r}
+binom.test(gs[1,2:1], p=0.75)
+
+```
+
+----------------------------
+
+## Linear Models, correlation 
+
+#### Are arrival and departure delay correlated?
+
+```{r, fig.width=8}
+if (baseR){
+  plot(arr_delay ~ dep_delay, data=flights, pch=20,cex=0.5,col=carrier)
+  grid()
+} else {
+  p = ggplot(flights, aes( dep_delay,arr_delay, col=carrier ))
+  p + geom_point( alpha=0.5, size=1) + coord_trans(x="sign_sqrt", y="sign_sqrt") # +  geom_smooth(method=lm) 
+}
+
+
+cor(flights$dep_delay,flights$arr_delay, use = "complete.obs",method = "pearson")
+#slooow    
+#cor(flights$dep_delay,flights$arr_delay, use = "complete.obs",method = "kendall")
+  
+#cor(flights$dep_delay,flights$arr_delay, use = "complete.obs",method = "spearman")
+
+Shortdelays = filter(flights, abs(arr_delay)<100 & abs(dep_delay)<100)
+
+cor(Shortdelays$dep_delay,Shortdelays$arr_delay, use = "complete.obs",method = "pearson")
+
+#plot(arr_delay ~ dep_delay,data=Shortdelays)
+```
+
+
+## simple regression 
+
+### mpg vs. weight
+
+
+```{r}
+library(ISLR);data(Auto)
+plot(mpg ~ weight, data = Auto,col = rgb(0,0,1,0.5), pch=20,xlim=c(250, 7000), ylim = c(0,45));grid()
+LSfit = lm(mpg ~ weight, data = Auto)
+
+#overlay regression line
+abline(LSfit, col=2)
+
+#summary
+summary(LSfit)
+
+#diagnostics
+plot(LSfit, c(1,2,4))
+
+```
+
+**Tasks**
+
+1. Predict mpg for a car that weighs 5000 lbs.
+2. Confidence Interval for slope
+3. Are the least squares assumptions met?
+4. Add 3 outliers to the data: 
+  * weight=500, mpg = 40
+  * weight=$10^4$, mpg = 80
+  * weight=3000, mpg = 80
+
+Points that fall horizontally far from the line are points of high leverage; these points
+can strongly influence the slope of the least squares line. If one of these high leverage
+points does appear to actually invoke its in
+uence on the slope of the line then we call it an in
+uential point. Usually we can say
+a point is influential if, had we fitted the line without it, the influential point would have
+been unusually far from the least squares line.
+
+
+```{r, fig.width=12, fig.height = 6}
+par(mfrow=c(1,3), cex=1.4)
+
+outlrs = cbind(weight=c(500,10000,3000),mpg=c(40,80,80))
+Auto2 = Auto
+
+fit=list()
+for (i in 1:3){
+  Auto2[1,c("weight","mpg")] = outlrs[i,]
+  
+  plot(mpg ~ weight, data = Auto2,col = rgb(1,0.894,0.769,0.5), pch=20);grid()
+  #overlay regression line
+  abline(LSfit, col=2, lwd=2.5)
+  fit[[i]] = lm(mpg ~ weight, data = Auto2) 
+  points(Auto2[1,c("weight","mpg")], col = i+2, pch = 18, cex = 2)
+  #overlay regression line
+  abline(fit[[i]], col=i+2,lwd=2, lty=2)
+  #plot(fit[[i]],5)
+}
+
+
+```
+
+
+# Day 3, Advanced Data Analysis
+
+
+## Time series
+
+Recall the we temperatures for the period 1970-2005.
+
+```{r }
+Global <- scan("data/global.dat")
+ Global.ts <- ts(Global, st = c(1856, 1), end = c(2005, 12),
+fr = 12)
+ Global.annual <- aggregate(Global.ts, FUN = mean)
+ plot(Global.ts);grid()
+ 
+```
+
+### Interactive Data Exploration
+
+```{r}
+library(dygraphs)
+dygraph(Global.ts) %>%  dyRangeSelector() 
+```
+
+The following regression model is fitted to the global temperature over this period, and approximate 95% confidence intervals are given for the parameters using
+confint. The explanatory variable is the time, so the function time is
+used to extract the ``times` from the `ts` temperature object.
+
+```{r}
+Last35 <- window(Global.ts, start=c(1970, 1), end=c(2005, 12))
+ Last35Yrs <- time(Last35)
+ fitAD=lm(Last35 ~ Last35Yrs)
+summary(fitAD)
+plot(Last35)
+  abline(fitAD,col=2)
+  
+  confint(fitAD)
+  
+```
+
+###  Standard Errors incorrect
+ 
+The confidence interval for the slope does not contain zero, which would provide
+statistical evidence of an increasing trend in global temperatures if the
+autocorrelation in the residuals is negligible. However, the residual series is
+positively autocorrelated at shorter lags:
+
+```{r}
+acf(resid(fitAD),  main = "Autocorrelation of residuals")
+```
+
+
+, leading to an underestimate
+of the standard error and too narrow a confidence interval for the slope.
+Intuitively, the positive correlation between consecutive values reduces the
+effective record length because similar values will tend to occur together. The
+following section illustrates the reasoning behind this but may be omitted,
+without loss of continuity, by readers who do not require the mathematical
+details.
+
+
+
+#### Generalised least squares
+
+For a positive serial correlation in the
+residual series, this implies that the standard errors of the estimated regression
+parameters are likely to be underestimated, and should
+therefore be corrected.
+A fitting procedure known as generalised least squares (GLS) can be used
+to provide better estimates of the standard errors of the regression parameters
+to account for the autocorrelation in the residual series. The procedure is
+essentially based on maximising the likelihood given the autocorrelation in
+the data and is implemented in R in the gls function (within the nlme library,
+which you will need to load).
+
+```{r}
+library(nlme)
+x.gls <- gls(Last35 ~ Last35Yrs, cor = corAR1(0.7))
+confint(x.gls)
+#par(mar=c(7,3,1,1));
+#pacf(fitAD$residuals,lag.max = 10)
+
+```
+
+
+### stochastic model
+
+
+The data exhibit an increasing trend after 1970, which may be due to
+the *greenhouse effect*. Sceptics may claim that the apparent increasing trend
+can be dismissed as a transient stochastic phenomenon. For their claim to be
+consistent with the time series data, it should be possible to model the trend
+without the use of deterministic functions.
+Consider the following AR model fitted to the mean annual temperature
+series:
+
+
+
+```{r}
+ Global.ar <- ar(Global.annual, method = "mle")
+mean(aggregate(Global.ts, FUN = mean))
+ 
+ Global.ar$ar
+ 
+ options(digits=3)
+ rbind(Global.ar$ar -2 * sqrt(diag(Global.ar$asy.var)),
+       Global.ar$ar,
+       Global.ar$ar +2 * sqrt(diag(Global.ar$asy.var)) )
+ 
+ 
+acf(Global.ar$res[-(1:Global.ar$order)], lag = 50, main = "Autocorrelation of residuals")
+```
+
+Based on the output above a predicted mean annual temperature $x_t$ at
+time t is given by
+$$
+\hat{x}_t = -0.14 + 0.59(x_{t-2} + 0.14) + 0.013(x_{t-2} + 0.14) +0.11(x_{t-3} + 0.14) + 0.27(x_{t-4} + 0.14)
+$$
+
+The correlogram of the residuals has only one (marginally) significant value
+at lag 27, so the underlying residual series could be white noise.
+Thus the fitted AR(4) model provides a good fit to the
+data. As the AR model has no deterministic trend component, the trends in
+the data can be explained by serial correlation and random variation, implying
+that it is possible that these trends are stochastic (or could arise from a purely
+stochastic process). Again we emphasise that this does not imply that there is
+no underlying reason for the trends. If a valid scientific explanation is known,
+such as a link with the increased use of fossil fuels, then this information would
+clearly need to be included in any future forecasts of the series.
+
+
+
+## Logistic regression
+
+Back to the Titanic data. How did the survival probability depend on age?
+
+```{r}
+fit = glm(Survived ~ Age, family = binomial, data = train)
+pander(summary(fit)$coefficients)
+```
+
+**Give a precise interpretation of the slope**
+
+
+### Dummies/factors
+
+```{r}
+fit = glm(Survived ~ Pclass, family = binomial, data = train)
+pander(summary(fit)$coefficients)
+```
+
+
+```{r}
+fit = glm(Survived ~ factor(Pclass), family = binomial, data = train)
+pander(summary(fit)$coefficients)
+```
+
+```{r}
+fit = glm(Survived ~ factor(Pclass) -1, family = binomial, data = train)
+pander(summary(fit)$coefficients)
+```
+
+
+
+
+## multiple regression 
+
+
+```{r}
+fit1=glm(Survived ~ Pclass + Sex + Age + Fare, data = train, family=binomial)
+pander(summary(fit1)$coefficients)
+
+```
+
+
+Second model: take out the (highly significant) variable passenger class
+
+```{r}
+fit2=glm(Survived ~ Pclass + Sex + Age, data = train, family=binomial)
+pander(summary(fit2)$coefficients)
+```
+
+**Why did the status of the variable Fare change from non-significant to highly significant ?**
+
+
+
+
+## ANOVA
+ 
+
+### Comparison of nested models
+
+See page 130 in the ISL book.
+
+The anova() function performs a hypothesis
+test comparing the two models. The null hypothesis is that the two models
+fit the data equally well, and the alternative hypothesis is that the full
+model is superior. 
+
+
+
+```{r}
+ fit1=lm(Survived ~ Pclass + Sex + Age + Fare, data = train)
+ fit2=lm(Survived ~ Pclass + Sex + Age , data = train)
+
+anova(fit1,fit2)
+```
+
+### Differences in means
+
+Are there significant differences in delays by airport in the flight data?
+
+```{r, fig.width=10}
+if (baseR){
+  boxplot(arr_delay ~ origin, data=flights)
+  grid()
+} else {
+  p = ggplot(flights, aes( factor(origin),arr_delay))
+  p + geom_boxplot() + coord_trans(y="sign_sqrt") #+ scale_y_sqrt()
+}
+
+```
+
+Can we use ANOVA to determine its significance?
+
+Yes, a linear model:
+
+```{r}
+summary(lm(arr_delay ~ factor(origin) -1, data = flights))
+
+myAOV = aov(arr_delay ~ factor(origin) -1, data = flights)
+
+summary(myAOV)
+
+
+```
+
+
+The ANOVA F-test answers the question whether there are significant 
+differences in the K population means. However, it does not provide us with any 
+information about how they differ. Therefore when you reject $H_0$
+in ANOVA, 
+additional analyses are required to determine what is driving the difference in 
+means.  The function `pairwise.t.test` computes the pairwise comparisons 
+between group means with corrections for multiple testing.
+
+
+```{r}
+pairwise.t.test(flights$arr_delay, flights$origin, adjust="bonferroni")
+```
+
+
+Another multiple comparisons procedure is Tukey???s method. The function 
+`TukeyHSD()` creates a set of confidence intervals on the differences between means with the specified family-wise 
+probability of coverage:
+
+
+
+```{r}
+TukeyHSD(myAOV)
+```
+
+
+
+## Logistic Regression with the Stock Market Data
+
+```{r}
+library(ISLR)
+names(Smarket)
+#dim(Smarket)
+#summary(Smarket)
+#pairs(Smarket)
+#cor(Smarket)
+#cor(Smarket[,-9])
+attach(Smarket)
+plot(Volume, type="l", col = "brown");grid()
+```
+
+we will fit a logistic regression model in order to predict Direction
+using Lag1 through Lag5 and Volume.
+
+But we need to be careful: the *training error rate* is often overly optimistic-it
+tends to underestimate the test error rate. In order to better assess the accuracy
+of the logistic regression model in this setting, we can fit the model
+using part of the data, and then examine how well it predicts the held out
+data. This will yield a more realistic error rate, in the sense that in practice
+we will be interested in our model's performance not on the data that
+we used to fit the model, but rather on days in the future for which the
+market's movements are unknown.
+
+To implement this strategy, we will first create a vector corresponding
+to the observations from 2001 through 2004. We will then use this vector
+to create a held out data set of observations from 2005.
+
+```{r}
+
+train=(Year<2005)
+Smarket.2005=Smarket[!train,]
+dim(Smarket.2005)
+Direction.2005=Direction[!train]
+```
+
+
+The object train is a vector of 1, 250 elements, corresponding to the observations
+in our data set. The elements of the vector that correspond to
+observations that occurred before 2005 are set to `TRUE`, whereas those that
+correspond to observations in 2005 are set to `FALSE`. The object train is
+a **Boolean** vector, since its elements are TRUE and `FALSE`.
+
+
+We now fit a logistic regression model using only the subset of the observations
+that correspond to dates before 2005, using the subset argument.
+We then obtain predicted probabilities of the stock market going up for
+each of the days in our test set-that is, for the days in 2005.
+
+```{r}
+
+glm.fit=glm(Direction~Lag1+Lag2+Lag3+Lag4+Lag5+Volume,data=Smarket,family=binomial,subset=train)
+glm.probs=predict(glm.fit,Smarket.2005,type="response")
+```
+
+Notice that we have trained and tested our model on two completely separate
+data sets: training was performed using only the dates before 2005,
+and testing was performed using only the dates in 2005. Finally, we compute
+the predictions for 2005 and compare them to the actual movements
+of the market over that time period.
+
+```{r}
+
+glm.pred=rep("Down",252)
+glm.pred[glm.probs>.5]="Up"
+table(glm.pred,Direction.2005)
+mean(glm.pred==Direction.2005)
+mean(glm.pred!=Direction.2005)
+```
+
+The != notation means not equal to, and so the last command computes
+the test set error rate. The results are rather disappointing: the test error
+rate is 52 %, which is worse than random guessing! Of course this result
+is not all that surprising, given that one would not generally expect to be
+able to use previous days' returns to predict future market performance.
+(After all, if it were possible to do so, then the authors of this book would
+be out striking it rich rather than writing a statistics textbook.)
+
+
+We recall that the logistic regression model had very underwhelming pvalues
+associated with all of the predictors, and that the smallest p-value,
+though not very small, corresponded to Lag1. Perhaps by removing the
+variables that appear not to be helpful in predicting Direction, we can
+obtain a more effective model. After all, using predictors that have no
+relationship with the response tends to cause a deterioration in the test
+error rate (since such predictors cause an increase in variance without a
+corresponding decrease in bias), and so removing such predictors may in
+turn yield an improvement. Below we have refit the logistic regression using
+just `Lag1` and `Lag2`, which seemed to have the highest predictive power in
+the original logistic regression model.
+
+```{r}
+
+glm.fit=glm(Direction~Lag1+Lag2,data=Smarket,family=binomial,subset=train)
+glm.probs=predict(glm.fit,Smarket.2005,type="response")
+glm.pred=rep("Down",252)
+glm.pred[glm.probs>.5]="Up"
+table(glm.pred,Direction.2005)
+mean(glm.pred==Direction.2005)
+106/(106+76)
+predict(glm.fit,newdata=data.frame(Lag1=c(1.2,1.5),Lag2=c(1.1,-0.8)),type="response")
+```
+
+
+Now the results appear to be a little better: 56% of the daily movements
+have been correctly predicted. It is worth noting that in this case, a much
+simpler strategy of predicting that the market will increase every day will
+also be correct 56% of the time! Hence, in terms of overall error rate, the
+logistic regression method is no better than the naive approach. However,
+the confusion matrix shows that on days when logistic regression predicts
+an increase in the market, it has a 58% accuracy rate. This suggests a
+possible trading strategy of buying on days when the model predicts an increasing
+market, and avoiding trades on days when a decrease is predicted.
+Of course one would need to investigate more carefully whether this small
+improvement was real or just due to random chance.
+
+
+# Appendix
+
+## Leverage, Influence and Cook's distance
+
+
+## Autocorrelation and the estimation of sample statistics
+
+To illustrate the effect of autocorrelation in estimation, the sample mean will
+be used, as it is straightforward to analyse and is used in the calculation of
+other statistical properties.
+Suppose $x_t : t = 1, .., n$ is a time series of independent random variables
+with mean $E(x_t) = \mu$ and variance $Var(x_t) =\sigma^2$. 
+Then it is well known in the study of random samples that the sample mean 
+$\bar{x} = \sum_{t=1}^n{x_t}/n$ has mean 
+$E(\bar{x}) = \mu$ and variance $Var(\bar{x}) =\sigma^2/n$
+
+Now let $x_t : t = 1, .., n$  be a stationary time series with $E(x_t) = \mu$ and variance $Var(x_t) =\sigma^2$, and autocorrelation function $Cor(x_t, x_{t+k}) = \rho_k$. Then the variance of the
+sample mean is given by
+
+$$
+Var(\bar{x}) =\frac{\sigma^2}{n}  \left(1 + 2 \sum_{k=1}^{n-1}{(1-k/n) \rho_k} \right)
+$$
+
+## Sources
+
+1. Analysis of temperature data leans heavily on "Introductory Time Series with R", by Cowpertwait and Metcalfe.
+2. Stock market regression is taken from "An Introduction to Statistical Learning", by Gareth James, Daniela Witten, Trevor Hastie, Robert Tibshirani.
+
