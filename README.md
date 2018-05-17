@@ -86,7 +86,7 @@ When you start RStudio you should see 3 panels, one of them the *Console* where 
 if (!require(pacman)) install.packages("pacman")
 library(pacman)
 
-p_load(ISLR,pander,nycflights13,dplyr,ggplot2,scales,partykit,dygraphs,nlme,plm,mgcv,RgoogleMaps,texreg,MASS, install = TRUE)
+p_load(ISLR,pander,nycflights13,dplyr,ggplot2,scales,partykit,dygraphs,nlme,mgcv,RgoogleMaps,texreg,tidyr, install = TRUE)
 ```
 
 I would decline the compilation from source.
