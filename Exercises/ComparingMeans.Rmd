@@ -1,0 +1,285 @@
+---
+title: "Statements about Means"
+author: "M Loecher"
+output: beamer_presentation
+#classoption: landscape
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+fdir = "C:/Users/loecherm/Dropbox/Teaching/TeachingMaterials/Rcode/"
+  
+source(paste0(fdir, 'PlotUrn.R'))
+library(ggplot2)
+library(pander)
+
+PlotNormal = function(z2 = 1.65, z3 = 1.96){
+  x <- seq(-4, 4, len = 401)
+  y <- dnorm(x)
+  P2 = round(pnorm(z2),3)
+  P3 = round(pnorm(z3),3)
+  i2 = match(T, x >= z2)
+
+  par(mar = c(2.5, 2, 1, 0.5))
+  plot(x,y,type="l", lwd=1.8,  xaxt = "n", xlab = "z", ylab = "Wahrscheinlichkeitsdichte", main = "Standard normal distribution")
+  axis(1, at = ((-3):3))
+
+  polygon(c(x[1:i2], z2),c(y[1:i2],0),col = rgb(1,0,0,0.3), lwd=.2)
+  text(x=2.5 ,y=0.25, paste("P(z <", z2, ") = ", P2, sep =""))
+  text(x=2.5 ,y=0.2, paste("P(z <", z3, ") = ", P3, sep =""))
+  #text(x=2.5 ,y=0.2, paste("P(z <", z2, ") = ", P2, sep =""))
+  #text(x=z0-1 ,y=y[i2]-0.05, paste("=", P2, "", sep =""))
+  abline(v=0,lty = 2)
+}
+
+set.seed(123)
+```
+
+## Comparing distributions
+
+"Comparing distributions for equality of means" is a process we (often unknowingly) perform all the time, e.g.:
+
+1. September 2016 seemed much warmer than "average".
+2. Women tend to earn less than men.
+3. Obtaining a master degree typically yields a higher salary.
+4. Thomas Mueller is better at penalty shots than Lionel Messi.
+5. Traffic on Mondays is the worst.
+6. Colorful, attention grabbing banners on Web pages lead to more clicks.
+7. The ability to concentrate is lower after drinking 4 cups of coffee. 
+
+In all of these situations, we have two groups of data - let us call them $x_A$ and $x_B$ - which fluctuate around their respective **true** means $\mu_A$ and $\mu_B$, often substantially. 
+
+Why is it then that we cannot simply compare the "outcomes" and conclude that $\mu_A > \mu_B$ ? 
+
+
+## No stats needed:
+
+1. dice: "die 2 yielded a higher number than die 1"
+2. Avg. Temperature in Berlin in 2015 versus 1950
+3. urn: drawing **without replacement** (until depleted)
+    + "There are more red than blue marbles in the urn"
+    + "The proportion of red marbles is exactly 3/5"
+
+```{r urn1, echo = FALSE, fig.height=4}
+plotUrn(N=c(3,2), n= c(3,2))
+```
+
+## With replacement
+
+- "There are more red than blue marbles in the urn"
+- "The proportion of red marbles is exactly 4/5"
+    
+```{r urn2, echo = FALSE}
+plotUrn(N=c(3,2), n= c(4,1),Replace=TRUE)
+```
+
+## Without replacement
+- "There are more red than blue marbles in the urn"
+- "The proportion of red marbles is exactly 3/5"
+    
+```{r urn3, echo = FALSE}
+plotUrn(N=c(30,20), n= c(3,2),Replace=FALSE)
+```
+
+## What is a "sample" mean?
+
+We typically **never observe the mean $\mu$** (hence often called a "hidden" or "latent" variable), instead we observe data from distributions with **population means**  $\mu_i$.
+
+
+```{r, out.height="50pt", echo=FALSE}
+par(mfrow=c(1,2), mar=rep(0,4))
+knitr::include_graphics(paste0(fdir, "Figures/two-dice-one-red-and-one-black.jpg"))
+knitr::include_graphics(paste0(fdir, "Figures/coin-toss.png" ))
+```
+
+### Random Walk Simulation
+
+Meet your good friends: **sample**, **rnorm**, **runif**, **set.seed**
+
+1. Toss $10^5$ coins $c(-1,1)$ and store in a $1000x100$ matrix
+2. Compute the cumulative sum for each column and plot
+3. Compute the cumulative mean for each column and plot
+4. What are the mean and variance of the 1st and last rows (both in theory and empirically)?
+
+(New commands needed: **matrix**, **apply**, **cumsum**, **for**)
+
+## Adding/Subtracting random variables
+
+- Compute the variance for each column from the two cumulative measures
+- Udacity: golfing
+- Stocks: Markowitz portfolio theory
+$$
+x_{\Sigma} = \sum_{i=1}^{N}{x_i} \Rightarrow \sigma_{\Sigma}^2 = \sum_{i=1}^{N}{\sigma_i^2} = N \cdot \sigma^2
+$$
+
+$$
+\bar{x} = \frac{1}{N} \sum_{i=1}^{N}{x_i} \Rightarrow \sigma_{\bar{x}}^2 = \sum_{i=1}^{N}{\frac{\sigma_i^2}{N^2}} = \frac{\sigma^2}{N}
+$$
+
+$$
+\Rightarrow \sigma_{\bar{x}} =  \frac{\sigma}{\sqrt{N}}
+$$
+
+## Inference 
+
+All we have are the sample means e.g. $\bar{x}_A > \bar{x}_B$!
+We nevertheless want to make statements and draw conclusions such as $\mu_A > \mu_B$.
+That daring step is called **statistical inference**.
+
+$$
+\bar{x} \Rightarrow \mu
+$$
+
+
+Let us play a game with two dice, one regular die and one "biased" die where we replaced the $1$ with a $7$. Clearly the average for the latter is greater than the former: $(2+3+4+5+6+7)/6 = 4.5 > 3.5$. Will every single experiment reveal this ?
+
+Let us toss the two dice each 4 times and average the number of pips. And repeat this 1000 times
+
+## Simulation, N=4
+
+```{r diceSimN4, echo = FALSE}
+set.seed(123)
+N=36 # sample size
+Md1=Md2=vector() #sample means
+for (i in 1:1000){
+  Md1[i] = mean(sample(1:6,N,T))#with replacement
+  Md2[i] = mean(sample(2:7,N,T))
+}
+sum(Md2<=Md1)/1000
+
+100*round(mean(Md2 <=Md1),3)
+
+x1 = cbind.data.frame(SM=Md1,die="black")
+x2 = cbind.data.frame(SM=Md2,die="red")
+x = rbind.data.frame(x1,x2)
+
+```
+
+```{r, echo = FALSE, fig.width=8}
+#sum(Md2<=Md1)
+ggplot(x, aes(SM, fill=die)) + geom_density(alpha=.5) + scale_fill_manual(values = c("darkgray", "red")) # +   theme(legend.position = "none")
+
+```
+
+How often were we wrong ?
+About `r round(sum(Md2<=Md1)/10,1)`% of the time!
+
+
+Make the above a function:
+
+```{r}
+
+Sim2Dice = function( 
+  N=36, # sample size
+  M=1000, # simulation size
+  d1 = 1:6, #dice 1
+  d2 = 2:7 #dice 2
+){
+ 
+  if (mean(d2) <= mean(d1)) print("excuse me, it might make sense to choose a higher mean for die 2") 
+  
+    
+  Md1=Md2=vector() #sample means
+  for (i in 1:M){
+    Md1[i] = mean(sample(d1,N,T))#with replacement
+    Md2[i] = mean(sample(d2,N,T))
+  }
+  ErrorRate = mean(Md2 <=Md1)
+  return(ErrorRate)
+}
+
+```
+
+```{r}
+Sim2Dice(N=10)
+
+```
+
+
+## Simulation, N=36
+
+```{r diceSimN36, echo = FALSE}
+N=36 # sample size
+Md1=Md2=vector() #sample means
+for (i in 1:1000){
+  Md1[i] = mean(sample(1:6,N,T))#with replacement
+  Md2[i] = mean(sample(2:7,N,T))
+}
+x1 = cbind.data.frame(SM=Md1,die="black")
+x2 = cbind.data.frame(SM=Md2,die="red")
+x = rbind.data.frame(x1,x2)
+```
+
+```{r, echo = FALSE, fig.width=8}
+#sum(Md2<=Md1)
+ggplot(x, aes(SM, fill=die)) + geom_density(alpha=.5) + scale_fill_manual(values = c("darkgray", "red")) # +   theme(legend.position = "none")
+
+```
+
+How often were we wrong ?
+About `r round(sum(Md2<=Md1)/10,1)`% of the time!
+
+
+## Sample Stdev, Scaling
+
+```{r, echo = FALSE, fig.width=8}
+N=2^(2:10) # sample size
+M = 1000 # number of simulations
+m=matrix(NA, nrow=M,ncol=length(N)) #sample means
+colnames(m) = N
+for (j in 1:length(N)){
+  n = N[j]
+  tmp = matrix(sample(1:6,n*M,T), nrow=M)#with replacement
+  m[,j] = rowMeans(tmp)
+}
+
+#ggplot(m) + geom_boxplot() 
+bp=boxplot(m,notch=TRUE,col="bisque", xlab = "sample size", ylab = "sample means", main = "Sampling Variation");grid()
+#w = qnorm(0.75)*sqrt(2.9/N)#theory
+w = qnorm(0.75)*apply(m,2,sd)
+lines(1:length(N), 3.5+w, col = "red", lwd=2)
+lines(1:length(N), 3.5-w, col = "red", lwd=2)
+```
+
+## Properties of the Normal distribution
+
+```{r, echo = FALSE, fig.width=8}
+PlotNormal(z2 = 1.65, z3 = 1.96)
+```
+
+
+
+## t test
+
+\small
+
+Compare two sets of numbers directly:
+
+```{r, echo = TRUE}
+N=4
+ d1 = sample(1:6,N,T)
+ d2 = sample(2:7,N,T)
+ #t.test(d1,d2)
+ #t.test(d1,d2, paired=TRUE)
+ t.test(d1,d2, var.equal=TRUE)
+```
+
+What are the differences between the three versions of the t test above?
+
+```{r}
+x = c(rep(1,4), rep(0,6)) #"4 out of 10"
+y = c(rep(1,300), rep(0,700)) #"300 out of 1000"
+
+#general code:
+#k successes, sample size n:
+GenBinary = function(k=4,n=10)
+ return(c(rep(1,k), rep(0,n-k)))
+
+t.test(x,y)
+
+
+
+
+
+```
+

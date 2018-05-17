@@ -1,0 +1,125 @@
+---
+title: "class V, Data Science"
+author: "M Loecher"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+loadLibs = function(libs="RgoogleMaps"){
+  for (l in libs) 
+    suppressMessages(suppressWarnings(library(l,character.only =TRUE, quietly=TRUE)))
+}
+
+loadLibs("googleVis")
+loadLibs("xts")
+loadLibs("dygraphs")
+
+```
+```{r}
+PlotBinom = function(input=list(N=100,p=0.1,lt=5,rt=15), extraAxis=2){
+  k = pmax(0,qbinom(0.0001,input$N,input$p)):qbinom(0.99999,input$N,input$p)
+  x  <- dbinom(k,input$N, input$p)
+  # barplot(x,names=k,col = 'darkgray', border = 'white', main = "", 
+  #         xlab="num of successes",space=0);box()
+  hb=list()
+  hb$counts=x
+  hb$breaks = c(min(k)-1,k);#hb$breaks=hb$breaks-min(hb$breaks)
+  class(hb)="histogram"
+  plot(hb,col = 'darkgray', border = 'white', main = "", xlab="")
+  if (extraAxis > 0){
+    axis(1,line=2,col="darkgreen", labels=FALSE)
+    if (extraAxis > 1) axis(1,line=3.5,col="purple", labels=FALSE)
+  }
+  
+  grid()
+  VR= round(1-pbinom(input$rt,input$N, input$p),3)
+  VL= round(pbinom(input$lt,input$N, input$p),3)
+  vl=input$lt;vr=input$rt
+  
+  try({
+    if (vl>min(hb$breaks) & vl<max(hb$breaks)){
+      abline(v=vl, col=2);mtext(paste(VL),side=3,at=vl,col=2,line=0.5)
+      for (i in 1:(match(T,hb$breaks>vl)-2)) 
+        rect(hb$breaks[i],0,hb$breaks[i+1],hb$counts[i],col=rgb(1,0,0,0.5),border=NA)
+      rect(hb$breaks[i+1],0,vl,hb$counts[i+1],col=rgb(1,0,0,0.5),border=NA)
+    }
+    if (vr>min(hb$breaks) & vr<max(hb$breaks)){
+      abline(v=vr, col=2);mtext(paste(VR),side=3,at=vr,col=2,line=0.5)
+      ir=match(T,hb$breaks>vr)
+      for (i in ir:(length(hb$breaks)-1)) 
+        rect(hb$breaks[i],0,hb$breaks[i+1],hb$counts[i],col=rgb(1,0,0,0.5),border=NA)
+      rect(vr, 0,hb$breaks[ir],hb$counts[ir-1],col=rgb(1,0,0,0.5),border=NA)
+    }
+  })
+}
+```
+
+### Estimation and Testing
+
+Recall the problems from the homework where we were asked the generic question
+
+## HOW LIKELY COULD "THIS" HAVE HAPPENED BY CHANCE ONLY?
+(under certain assumptions on parameters!)
+
+* In the insurance company example: We assume a given probability of a car being stolen to be 10%. We then asked: under that assumption, how probable is it that more than 15% of the respective fleets are stolen. Let us answer this by plotting the distributions:
+
+```{r, fig.width=10, fig.height=6}
+p100 = round(1-pbinom(15,100, 0.1),3)
+p400 = round(1-pbinom(60,400, 0.1),6)
+par(mfrow = c(1,2), mar = c(6,2,3,1))
+PlotBinom(input=list(N=100,p=0.1,lt=4,rt=16));title(paste("N=100"))
+legend("topright", paste("s=", round(sqrt(100*0.1*0.9),1)))
+PlotBinom(input=list(N=400,p=0.1,lt=28,rt=52));title(paste("N=400"))
+legend("topright", paste("s=", round(sqrt(400*0.1*0.9),1)))
+```
+
+
+#### Task: Complete the labeling of the two axis: 
+
+Shown is the *sampling distribution**, which is only of limited value.
+Let us flip the situation: 
+
+You take a random sample of N cars and record how many of those have been stolen, call that $\hat{p}$.
+
+The burning questions now are clearly 
+
+1. Can you give an estimate of the **true** theft probability $p$. 
+2. How likely is it that this parameter is greater than e.g. $0.15$ ?
+
+
+#### Exercises
+
+Subset the Titanic data to adults only. Take a random sample of $n=100$ of those passengers
+
+1. Compute a 95% confidence interval for the proportion of survival
+2. Compute a 95% confidence interval for the mean age of the passengers, separated by survival.
+3. What exactly would you change in the above to obtain 99% CIs?
+4. How likely is it that the true survival probability was greater than 0.45 ?
+5. How likely is it that the true survival probability was less than 30 ?
+
+
+```{r}
+#load the Titanic data again
+train <- read.csv("H:/DropboxHWR/PreviousSemesters/WS2016/DataScience/data/TitanicTrain.csv")
+x = subset(train, Age >= 18)
+set.seed(123)
+n=100
+RandomRows = sample(nrow(x), n)
+y = x[RandomRows,]
+
+#PointEstimate:
+pHat = mean(y$Survived)
+#SE
+SE = sqrt(pHat*(1-pHat)/n)
+#CI:
+print(pHat + c(-1,1)*2*SE)
+
+```
+
+
+
+
+
+
+

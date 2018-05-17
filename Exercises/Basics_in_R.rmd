@@ -1,0 +1,149 @@
+---
+title: Basics in R
+output:
+  html_document:
+    code_folding: hide
+    theme: spacelab
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE)
+
+library(pacman)
+p_load(dplyr, ISLR, ggplot2)
+
+#assign("Auto", ISLR::Auto, envir=globalenv())
+data(Auto)
+```
+
+
+Today, I'll be teaching you the basics of data analysis in R. The Auto dataset from the ISLR package is already loaded 
+
+How many columns and rows does the 'Auto' dataset have?
+
+```{r, strip.white = TRUE}
+dim(Auto)
+``` 
+
+Open the 'Auto' dataset in a viewer in RStudio.
+
+```{r, strip.white = TRUE}
+View(Auto)
+``` 
+
+Compute the mean mpg of the 'Auto' dataset.
+
+```{r, strip.white = TRUE}
+mean(Auto$mpg)
+``` 
+
+Plot the distribution of mpg of the 'Auto' dataset.
+
+```{r, strip.white = TRUE}
+hist(Auto$mpg)
+``` 
+
+There are functions that (i) never and some that (ii) always return "sth." (values, objects, ...). There is a third type of function in R which only returns sth. to the user if "asked for", i.e. if one calls it by assigning the output to a variable, e.g. 'myHistogram <- hist(1:100)'. Repeat the hist command from above but this time 'catch' (assign) the returned data to an object 'hb'.
+
+```{r, strip.white = TRUE}
+hb <- hist(Auto$mpg)
+``` 
+
+Inspect the returned object 'hb'.
+
+```{r, strip.white = TRUE}
+hb
+``` 
+
+The object 'hb' is the most general/flexible data structure which R has to offer. Using the '$' notation (again), every named entry is its own data object which can be a vector of numbers, strings, matrices, etc.. For example, 'hb$mids' contains the mid points and 'hb$breaks' the boundaries of the histogram bars. 
+
+By looking at the hb object, how many cars have mpg between 15 and 20?
+
+```{r, strip.white = TRUE}
+hb$counts[3]
+``` 
+
+Add an outlier (in this case a data typo) to the variable/column mpg by swapping the digits of the 17th entry, i.e. change the 17th element from '18' to '81'.
+
+```{r, strip.white = TRUE}
+Auto$mpg[17] <- 81
+``` 
+
+Repeat the histogram creation with this outlier
+
+```{r, strip.white = TRUE}
+hb <- hist(Auto$mpg)
+``` 
+
+Inspect the returned object 'hb' again and discuss the impact of the outlier on the efficiency of the binning process.
+
+```{r, strip.white = TRUE}
+hb
+``` 
+
+Look at the help for the extremely useful 'aggregate' function
+
+```{r, strip.white = TRUE}
+?aggregate
+``` 
+
+Use the formula interface for 'aggregate' to compute the average mpgs separately for the different cylinder numbers.
+
+```{r, strip.white = TRUE}
+aggregate(mpg ~ cylinders, data = Auto, FUN = mean)
+``` 
+
+There are many ways to achieve a task. One of the strengths of R is the number of useful extra libraries called packages that the user community has contributed. A particularly powerful set of packages for data manipulation and plotting comes from the RStudio folks around Hadley Wickham. One alternative to the base R aggregate function would be the combination of summarise/group_by from the package dplyr. Look at the help page for group_by.
+
+```{r, strip.white = TRUE}
+?group_by
+``` 
+
+One of the advantages of the dplyr summarise function is the ease of computing multiple summary stats simultaneously. In one line, compute the average mpgs AND the number of entries separately for the different cylinder numbers.
+
+```{r, strip.white = TRUE}
+summarise(group_by(Auto, cylinders), mean(mpg), length(mpg))
+``` 
+
+Discuss with your peers (i) why "sample size" could be an appropriate name for the length column, and (ii) what confidence you should assign to the avg. mpg for the rare cylinder numbers 3 and 5. 
+
+It seems clear by now that there is a dependency of fuel efficiency and number of cylinders; certainly in terms of average mpg. What about the "spread", i.e. the variations around the mean ? Without claiming statistical rigor, we can certainly visualize that variation easily using a simple scatter plot. Try the simple plot() function with the "mpg ~ cylinders" formula.
+
+```{r, strip.white = TRUE}
+plot(mpg ~ cylinders, data = Auto)
+``` 
+
+Discuss with your peers the shortcomings of such a plot, in terms of visual appeal, strength of possible conclusions and hidden information. What simple fixes (e.g. in terms of color, plotting symbols, etc.) could improve this plot? 
+
+Scatter plots are typically used to visualize relationships between two continuous, metric variables. For example, create another scatter plot of mpg ~ weight. This time, add the parameters "col = rgb(0,0,1,0.5), pch=20" (Note2Self- play with size of plotting symbols, titles and background grid in your free time)
+
+```{r, strip.white = TRUE}
+plot(mpg ~ weight, data = Auto,col = rgb(0,0,1,0.5), pch=20)
+``` 
+
+Convince yourself that the variable 'cylinders' is quite different from 'weight' in it being very "discrete" and assuming just a handful of "levels". In  fact, I would claim that graphically we should treat it more like a categorical variable than a metric one. Ponder the concept of a categorical (often called "nominal") variable for a bit and tell me which of the following you would consider to be of that type. year;brand;horsepower;number of doors 
+
+In a typical data analysis project we find ourselves in the "continuous ~ categorical variable" situation quite often. Discuss with your peers what kind of a plot would be more appropriate than e.g. a scatter plot. Look at the help for the immensely helpful graphics function 'boxplot' function (Note2Self- shocking that Excel does not offer a built-in boxplot function)
+
+```{r, strip.white = TRUE}
+?boxplot
+``` 
+
+Generate a simple boxplot mpg versus cylinders. As boxplot is one of those functions with optional returns, begin the command with 'bp <- boxplot...'
+
+```{r, strip.white = TRUE}
+bp <- boxplot(mpg ~ cylinders, data = Auto)
+``` 
+
+Inspect the object bp
+
+```{r, strip.white = TRUE}
+bp
+``` 
+
+By looking at the bp object, what is the 'upper hinge' for mpg for cars with 4 cylinders?
+
+```{r, strip.white = TRUE}
+bp$stats[4,2]
+``` 
+

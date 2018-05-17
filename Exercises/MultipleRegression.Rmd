@@ -1,0 +1,388 @@
+---
+title: "Models with many features: multiple regression"
+author: "M Loecher"
+output: 
+  html_document:
+    toc: true
+    code_folding: hide
+    
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE)
+
+
+```
+
+## Presenting lm output
+
+```{r}
+library(MASS)
+data(Boston)
+plot(medv ~ rm, data = Boston);grid()
+fit1 = lm(medv ~ rm, data = Boston)
+summary(fit1)
+fit2 = lm(medv ~ rm + crim, data = Boston)
+summary(fit2)
+fit3 = lm(medv ~ rm + crim + rad, data = Boston)
+summary(fit3)
+fit4a = fit4 = lm(medv ~ rm + crim + rad + dis + nox + age, data = Boston) 
+summary(fit4)
+
+```
+
+
+
+```{r, results="asis"}
+library(texreg)
+#texreg(list(fit1,fit2,fit3,fit4)) #Latex output
+htmlreg(list(fit1,fit2,fit3,fit4))
+```
+
+
+## Adjusted Rsquared
+
+
+$$
+R^2 = 1- \frac{RSS}{TSS} \sim 1- \frac{\sigma^2_{e}}{\sigma^2_{y}} 
+$$
+
+$$
+R^2_{adj} = 1- \frac{RSS/(n-p-1)}{TSS/(n-1)} = 1- \frac{\sigma^2_{e}}{\sigma^2_{y}} 
+$$
+1. Refit model 4 for a random subset of 50 rows
+
+```{r}
+set.seed(123)
+ranRows = sample(nrow(Boston), 50)
+fit4a = fit4 = lm(medv ~ rm + crim + rad + dis + nox + age, data = Boston[ranRows,]) 
+summary(fit4a)
+```
+
+## model matrix
+
+The function *model.matrix()* constructs the "X side" of the data, which is very straightforward for metric data:
+
+```{r}
+train <- read.csv("../../data/TitanicTrain.csv")
+
+x1 = model.matrix(Survived ~ Age + Fare, data = train)
+#no intercept
+x1a = model.matrix(Survived ~ Age + Fare -1, data = train)
+
+library(DT)
+
+DT::datatable(cbind(x1,x1a), options = list(pageLength = 6))
+
+```
+
+
+## Dummy Coding 
+
+
+```{r}
+train$Pclass = factor(train$Pclass)
+#dummy coding
+x2 = model.matrix(Survived ~ Age + Pclass, data = train)
+#dummy coding, no intercept
+x2a = model.matrix(Survived ~ Age + Pclass -1, data = train)
+
+DT::datatable(cbind(x2,x2a), options = list(pageLength = 6))
+```
+
+
+#### Interpretation as intercept, not slope !
+
+```{r}
+library(ISLR)
+#The "Credit" data:
+data(Default)
+
+fit2a = lm(balance ~ income + student-1, data = Default)
+summary(fit2a)
+coefs=coefficients(fit2a)
+
+
+plot(balance ~ income, data = Default[sample(nrow(Default),500),], pch=20, cex=0.75, col = student);grid()
+
+abline(a=coefs[2],b=coefs[1],col=1)
+abline(a=coefs[3],b=coefs[1],col=2)
+
+fit2b = lm(balance ~ income, data = Default)
+coefs2=coefficients(fit2b)
+abline(a=coefs2[1],b=coefs2[2],col="blue")
+
+```
+
+### Simpsons Paradox!
+
+```{r}
+library(ggplot2)
+ggplot(Default, aes(income, fill=student)) + geom_density(alpha=.5) + 
+  scale_fill_manual(values = c("orange", "purple"))
+
+```
+
+
+## Interactions, revisited
+
+```{r}
+fit2c = lm(balance ~ income*student, data = Default)
+summary(fit2c)
+
+```
+
+
+#### Synergy 
+
+```{r}
+#Table 3.9 on  page 88 in ISL book
+Advertising <- read.csv("../../data/Advertising.csv")
+#get rid of the first column
+Advertising <- Advertising[,-1]
+
+fit3= lm(Sales ~ TV + Radio + TV:Radio, data = Advertising)
+summary(fit3)
+```
+
+### Interactions between qualitative and quantitative variables
+
+```{r}
+library(ISLR)
+#The "Credit" data:
+data(Default)
+
+#Eq. 3.34
+fit3_34 = lm(balance ~ income + student, data = Default)
+summary(fit3_34)
+
+fit3_35 = lm(balance ~ income + student + income:student, data = Default)
+summary(fit3_35)
+```
+
+```{r}
+plot(balance ~ income,col= student, data = Default, pch=20, cex=0.5)
+```
+
+
+#### R notation: * vs. :
+
+```{r}
+fit3_35b = lm(balance ~ income*student, data = Default)
+summary(fit3_35b)
+```
+
+
+## Ceteris Paribus, revisited
+
+### Beer & Chips
+
+```{r}
+set.seed(123)
+N=100
+NumBeers = rpois(N,1.5)
+#par(cex=1.5);barplot(table(NumBeers), xlab = "number beers", col = "bisque");grid()
+NumChips = 15*NumBeers 
+Headache = 0.5*NumBeers + 0.1*NumChips
+#Headache = pmax(0.5*NumBeers + 0.1*NumChips,0)  
+x=cbind.data.frame(NumBeers,NumChips,Headache)
+fit1=lm(Headache ~ NumBeers,data=x)
+summary(fit1)
+fit2=lm(Headache ~ NumChips,data=x)
+summary(fit2)
+fit3=lm(Headache ~ NumBeers + NumChips,data=x)
+summary(fit3)
+
+```
+
+#### Collinearity, False Negatives
+
+```{r}
+set.seed(123)
+N=100
+NumBeers = rpois(N,1.5)
+#par(cex=1.5);barplot(table(NumBeers), xlab = "number beers", col = "bisque");grid()
+NumChips = 15*NumBeers + rnorm(N,s=0.001)
+Headache = 0.5*NumBeers + 0.1*NumChips  + rnorm(N,s=1)
+#Headache = pmax(0.5*NumBeers + 0.1*NumChips,0)  
+x=cbind.data.frame(NumBeers,NumChips,Headache)
+fit1=lm(Headache ~ NumBeers,data=x)
+fit2=lm(Headache ~ NumChips,data=x)
+fit3=lm(Headache ~ NumBeers + NumChips,data=x)
+summary(fit3)
+
+```
+
+## The F test
+
+#### False Positives
+
+Create some VERY random data:
+
+```{r}
+
+Nrows=200;Ncols=20
+    
+ranData = matrix(rnorm(Nrows*Ncols),ncol=Ncols)
+colnames(ranData) = c("Y", paste0("X",1:(Ncols-1)))
+ranData = as.data.frame(ranData)
+#build a model with ALL x variables
+fit = lm(Y ~ . , data = ranData)
+summary(fit)
+```
+
+### Exercise
+
+Suppose we have a data set with five predictors, $X1 = \mathrm{GPA}$, $X2 = \mathrm{IQ}$, $X3 = \mathrm{Gender}$ (1 for Female and 0 for Male), $X4 = \mathrm{Interaction\ between\ GPA\ and\ IQ}$, and $X5 = \mathrm{Interaction\ between\ GPA\ and\ Gender}$. The response is starting salary after graduation (in thousands of dollars). Suppose we use least squares to fit the model, and get $\hat{\beta_0} = 50$, $\hat{\beta_1} = 20$, $\hat{\beta_2} = 0.07$, $\hat{\beta_3} = 35$, $\hat{\beta_4} = 0.01$, $\hat{\beta_5} = -10$.
+
+(a) Which answer is correct, and why?
+
+i. For a fixed value of IQ and GPA, males earn more on average than females.
+ii. For a fixed value of IQ and GPA, females earn more on average than males.
+iii. For a fixed value of IQ and GPA, males earn more on average than females provided that the GPA is high enough.
+iv. For a fixed value of IQ and GPA, females earn more on average than males provided that the GPA is high enough.
+
+(b) Predict the salary of a female with IQ of 110 and a GPA of 4.0.
+
+(c) True or false: Since the coefficient for the GPA/IQ interaction term is very small, there is very little evidence of an interaction effect. Justify your answer.
+
+---------------------------------------------------
+
+## Classification
+
+### glm
+
+### Interpretation of the coefficients in logistic regression
+
+Fitting a logistic regression (*LR*) model (with Age, Sex and Pclass as predictors) to the survival outcome in the Titanic data yields a summary such as this one:
+
+```{r, echo = FALSE}
+train <- read.csv("../../data/TitanicTrain.csv")
+#test <- read.csv("/test.csv")
+
+train$Sex = factor(train$Sex)
+train$Pclass = factor(train$Pclass)
+naRows = is.na(train$Age)
+
+NoMissingAge = train[!naRows,]
+
+#NoMissingAge = train[!is.na(train$Age),]
+
+#Task 
+#Is there a relationship between age and survived ?
+
+fit = lm(Survived ~ Age, data = train)
+summary(fit)
+
+predict(fit, data.frame(Age=200))
+predict(fit, data.frame(Age=0))
+
+```
+
+
+```{r, echo = FALSE}
+
+
+
+
+
+
+
+
+#logistic regression version:
+fit = glm(Survived ~ Age + Sex + Pclass , data= NoMissingAge, family = binomial(link=logit))
+summary(fit)
+Coefs = round(fit$coefficients, 4)
+
+Odds1 = round(exp(Coefs["(Intercept)"]), 3)
+
+llcomponents <- function(y, py) {
+ y*log(py) + (1-y)*log(1-py)
+}
+#deviance residuals
+
+edev <- sign(as.numeric(NoMissingAge$Survived) - fit$fitted.values) *
+sqrt(-2*llcomponents(as.numeric(NoMissingAge$Survived), fit$fitted.values))
+
+head(edev)
+head(resid(fit,"deviance"))
+```
+
+For "normal regression" we know that the value of $\beta_j$ simply gives us $\Delta y$ if $x_j$ is increased by one unit.
+
+In order to fully understand the exact meaning of the coefficients for a LR model we need to first warm up to the definition of a **link function** and the concept of **probability odds**.
+
+Using linear regression as a starting point
+$$
+y_i = \beta_0 + \beta_1 x_{1,i} + \beta_2 x_{2,i} + \ldots +\beta_k x_{k,i} + \epsilon_i
+$$
+we modify the right hand side such that (i) the model is still basically a linear combination of the $x_j$s but (ii) the output is -like a probability- bounded between 0 and 1. This is achieved by "wrapping" a sigmoid function $s(z) = 1/(1+exp(-z))$ around the weighted sum of the $x_j$s:
+$$
+y_i = s(\beta_0 + \beta_1 x_{1,i} + \beta_2 x_{2,i} + \ldots +\beta_k x_{k,i} + \epsilon_i)
+$$
+The sigmoid function, depicted below to the left, transforms the real axis to the interval $(0;1)$ and can be interpreted as a probability.
+
+```{r, echo = FALSE, fig.height=4,fig.width=8}
+par(mfrow=c(1,2))
+curve(1/(1+exp(x)),-6,6,lwd=2,col="darkblue", main = "sigmoid function");grid()
+curve(log(x/(1-x)),0,1,lwd=2,col="darkblue", main = "logit function");grid()
+
+```
+
+The inverse of the sigmoid is the *logit* (depicted above to the right), which is defined as $log(p/(1-p))$. For the case where p is a probability we call the ratio $p/(1-p)$ the **probability odds**. Thus, the logit is the log of the odds and logistic regression models these *log-odds* as a linear combination of the values of x.
+
+Finally, we can interpret the coefficients directly: the odds of a positive outcome are multiplied by a factor of $exp(\beta_j)$ for every unit change in $x_j$.
+(In that light, logistic regression is reminiscient of linear regression with logarithmically transformed dependent variable which also leads to multiplicative rather than additive effects.)
+
+As an example, the coefficient for Pclass 3 is `r Coefs["Pclass3"]`, which means that the odds of survival compared to the reference level Pclass 1 are reduced by a factor of $exp(`r Coefs["Pclass3"]`) = `r round(exp(Coefs["Pclass3"]), 4)`$;with all other input variables unchanged.
+How does the relative change in odds translate into probabilities?
+It is relatively easy to memorize the to and forth relationship between odds and probability $p$: 
+$$
+ odds = \frac{p}{1-p} \Leftrightarrow p = \frac{odds}{1 + odds}
+$$
+So the intercept `r Coefs["(Intercept)"]` (= log-odds!) translates into odds of $exp(`r Coefs["(Intercept)"]`) = `r Odds1`$ which yields a base probability of survival (for female Pclass1 of age 0) of $`r Odds1`/(1 + `r Odds1`) = `r round(Odds1/(1 + Odds1),3)`$
+
+#### Why make life so complicated?
+
+Do we have to go through the constant trouble of (i) exponentiating the coefficients, (ii) multiplying the odds and finally (iii) compute the resulting probabilities? 
+Can we not simply transform the coefficients from the summary table such that we can read off their effects directly - just like in linear regression?
+
+The trouble is that there is no simple way to translate the coefficients into an additive or even a multiplicative adjustment of the probabilities. (One simple way to see this is the impossibility of keeping the output bounded between 0 and 1)
+The following graph shows the effect of various coefficient values on a base/reference probability.
+
+```{r, echo = FALSE}
+
+TransformProb = function(
+  beta = -2, ##<< coefficient from logistic regression
+  p0 = 0.1, ##<< base probability
+  verbose = 0 ##<< level of verbosity
+){
+  o0 = p0/(1-p0) #baseline odds
+  oNew = exp(beta) * o0 #transformed odds
+  pNew = oNew/(1+oNew) #transformed probability
+  invisible(pNew)
+}
+
+x = list()
+beta = c(-5,-2,-1,1,2,5)
+pBase = seq(0.001,0.999, by = 0.001)
+for (i in 1:length(beta)){
+  x[[i]] = TransformProb(beta[i], pBase)  
+}
+
+x = do.call("cbind", x)
+# Expand right side of clipping rect to make room for the legend
+par(xpd=T, mar=par()$mar+c(0,0,0,6))
+matplot(pBase,x,type="l", lwd=1.5, ylab=" transformed p")
+
+# Plot legend where you want
+legend(1.1,1,beta, col = c(1:6), lty = c(1:5,1), lwd=1.25, title=expression(beta))
+
+# Restore default clipping rect
+par(xpd=F, mar=c(5, 4, 4, 2) + 0.1)
+```
+
+We immediately see that there is no straightforward additive or multiplicative effect that could be quantified.
+
+
+
