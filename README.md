@@ -50,7 +50,7 @@ PART II: INTRODUCTION TO MACHINE LEARNING
 
 -   Classification
 -   Logistic regression (review)
--   Nearest Neighbor, Naïve Bayes, Linear discriminant analysis
+-   Nearest Neighbor, NaÃ¯ve Bayes, Linear discriminant analysis
 -   Resampling Methods
 -   Cross-validation
 -   Bootstrapping
@@ -86,7 +86,7 @@ When you start RStudio you should see 3 panels, one of them the *Console* where 
 if (!require(pacman)) install.packages("pacman")
 library(pacman)
 
-p_load(ISLR,pander,nycflights13,dplyr,ggplot2,scales,partykit,dygraphs,nlme,plm,mgcv,RgoogleMaps,install = TRUE)
+p_load(ISLR,pander,nycflights13,dplyr,ggplot2,scales,partykit,dygraphs,nlme,plm,mgcv,RgoogleMaps,texreg,MASS, install = TRUE)
 ```
 
 I would decline the compilation from source.
@@ -101,6 +101,7 @@ Be prepared to wait a while, lots of dependent packages are being installed as w
 -   [Global Temperature](data/global.dat)
 -   [birth weights](data/BirthWeights.rda)
 -   [S&P 500](data/sp500.rda)
+-   [Advertising](data/Advertising.csv)
 
 ------------------------------------------------------------------------
 
