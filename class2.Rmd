@@ -1,0 +1,178 @@
+---
+title: "class2 code in class"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Load the Advertising data set 
+```{r}
+Advertising <- read.csv("data/Advertising.csv", row.names=1)
+```
+
+## New commands
+
+### points
+```{r}
+#needs existing plot
+plot(Sales ~ TV, data = Advertising, pch=20,col="blue", main = "Effect of Advertising on Sales");grid()
+m=colMeans(Advertising)
+#new idea: named vectors
+
+points(m["TV"], m["Sales"],col=2,pch=18,cex=2)
+
+#lines(1:300, sqrt(1:300), col="orange", lwd=2)
+
+lines(seq(1,300,by=10), sqrt(seq(1,300,by=10)), col="orange", lwd=2, lty = 3)
+
+
+```
+
+
+
+### abline
+
+```{r}
+#needs existing plot
+plot(Sales ~ TV, data = Advertising, pch=20,col="blue", main = "Effect of Advertising on Sales");grid()
+
+#vertical line
+abline(v=m["TV"],col="darkgreen", lwd=2)
+#horizontal line
+abline(h=m["Sales"],col="brown", lwd=2)
+#line with any slope
+abline(a = 0, b= 0.1 ,col="purple", lwd=2)
+
+```
+
+
+### sample
+
+```{r}
+#tossing a die 4 times
+sample(1:6,4, TRUE)
+#same:
+sample(6,4, TRUE)
+#reproducible
+set.seed(123)
+sample(6,4, TRUE)
+```
+
+
+### quantile
+
+$Q_{0.1}$
+
+```{r}
+quantile(Advertising$Sales,0.1)
+```
+
+$Q_{0.9}$
+
+```{r}
+quantile(Advertising$Sales,0.9)
+```
+
+IQR
+
+```{r}
+quantile(Advertising$Sales,c(0.25,0.75))
+```
+
+### Aggregating with dplyr
+
+```{r}
+library(ISLR)
+data(Auto)
+
+by_cyl <- group_by(Auto, cylinders)
+
+mpg <- summarise(by_cyl,
+  count = n(),
+  SD = sd(mpg, na.rm = TRUE),
+  mpg = mean(mpg, na.rm = TRUE))
+
+mpg
+filter(mpg, count > 10)
+
+mutate(mpg, SE = SD/sqrt(count))
+
+
+filter(mpg, count > 10) %>% mutate( SE = SD/sqrt(count))
+
+
+myResult  <-  group_by(Auto, cylinders) %>%  summarise(
+  count = n(),
+  SD = sd(mpg, na.rm = TRUE),
+  mpg = mean(mpg, na.rm = TRUE)) 
+
+
+
+```
+
+
+
+```{r}
+train$Child <- 0
+train$Child[train$Age < 18] <- 1
+
+by_ageSex <- group_by(train, Child, Sex,Survived)
+
+summarise(by_ageSex,
+  count = n(),
+  SurvProp =count/nrow(train))
+
+  #SurvProp = mean(Survived, na.rm = TRUE))
+
+
+```
+```{r}
+LSfit = lm(mpg ~ weight, data = Auto)
+
+predict(LSfit)
+
+predict(LSfit, newdata = data.frame(weight=5000), se.fit = TRUE)
+
+```
+
+
+## Titanic 
+
+```{r}
+SurvAge = lm(Survived ~ Age, data = train)
+summary(SurvAge)
+```
+
+
+```{r}
+train$Pclass = factor(train$Pclass, level=c("3","1","2"))
+
+SurvPclass = lm(Survived ~ factor(Pclass), data = train)
+summary(SurvPclass)
+
+
+```
+
+
+
+```{r}
+l = factor(letters, levels = rev(letters))
+
+head(as.numeric(l))
+
+```
+```{r}
+fit = glm(Survived ~ Age, family = binomial, data = train)
+```
+
+
+
+
+
+
+
+
+
+
