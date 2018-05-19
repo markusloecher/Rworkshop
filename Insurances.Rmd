@@ -1,0 +1,43 @@
+---
+title: 'Insurances: Size Matters'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Size matters: insurance company A insures 100 cars, company B 400 cars. The probability of a car being stolen is 10%. Compute the probabilities that more than 15% of the respective fleets are stolen.
+
+#### company A
+
+```{r}
+p=0.1
+n=100
+# less or equal than 15% 
+pO = pbinom( floor(0.15*n),  n, p)
+#1-pO
+
+bp =barplot(dbinom(0:n,  n, p), col ="bisque", xlim= c(0,30), space=0);grid()
+abline(v=n*0.15+1, col=2)
+```
+
+The probability that more than 15% of the company's A fleet is stolen would be: `r 1-pO`
+
+
+
+#### company B
+
+```{r}
+p=0.1
+n=400
+# less or equal than 15% 
+pO = pbinom( floor(0.15*n),  n, p)
+#1-pO
+
+bp =barplot(dbinom(0:n,  n, p), col ="bisque", xlim= c(0,), space=0);grid()
+abline(v=n*0.15+1, col=2)
+```
+
+
+The probability that more than 15% of the company's B fleet is stolen would be: `r 1-pO`
