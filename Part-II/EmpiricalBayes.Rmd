@@ -1,0 +1,266 @@
+---
+title: "Empirical Bayes, Shrinkage"
+author: "M Loecher"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=F,warning = F)
+# library(topicmodels)
+# library(tidytext)
+
+library(pacman)
+p_load(ggplot2, dplyr,tidyr,pander)#VGAM
+
+source('BetaHelp.R')
+```
+
+### Mean Imputation
+
+The following situation is ubiquitous in data analysis and not unique to the specific example at all:
+Assume you have amassed data on song recommendations for a long time with individual users and songs such as 
+```{r, echo = FALSE}
+set.seed(12)
+Nsongs=4
+Nusers = 1000
+pSong = round(runif(Nsongs,0.15,0.5),2)
+pSD = c(0.0075, 0.02, 0.05, 0.2) #round(pSong*(1-pSong)/2,2)
+#beta distribution, mean=, sd = 
+
+
+pUsers = Nu = matrix(0, ncol=Nsongs,nrow=Nusers)
+for (i in 1:Nsongs){
+  ab = BetaShapeParms(pSong[i], pSD[i])
+  pUsers[,i] = rbeta(Nusers,shape1 = ab[1], shape2 = ab[2])
+  Nu[,i] = rpois(Nusers,500*pSong[i])
+}
+
+Nu[7,1:2] = 0;Nu[7,3:4] = 1
+Nu[8,1:2] = c(2,4);Nu[8,3:4] = c(10,40)
+
+m = matrix("", ncol=Nsongs,nrow=Nusers)
+pAll = matrix(0, ncol=Nsongs,nrow=Nusers)
+for (i in 1:Nusers){
+  
+  k = rbinom(Nsongs,Nu[i,],pUsers[i,])
+  pAll[i,] = k/Nu[i,]
+  m[i,] = paste0(k,"/",Nu[i,],"=",round(pAll[i,],2)) #paste(k,Nu[i,],sep="/")
+}
+pAll[is.na(pAll)] = 0
+
+colnames(m) = colnames(pAll) = colnames(Nu) = c("Hello", "CHEAP THRILLS", "The Cure", "Stitches")
+rownames(m) = 1:Nusers
+rownames(m)[1:8] = c("Peter", "Susan", "Rebecca", "Tom", "Marc", "Livia", "Ann", "Julian")
+pander(head(m))
+```
+
+
+with the following listen proportions overall
+```{r, echo = FALSE}
+set.seed(123)
+Nsongs=4
+N = rpois(Nsongs, 5000)
+k = rbinom(Nsongs,N,pSong)
+mTotal = rbind(N=N, Listen = k, p = round(k/N,2))
+colnames(mTotal) = c("Hello", "CHEAP THRILLS", "The Cure", "Stitches")
+pander(mTotal)
+```
+
+For a new user who has never been presented with a song, what would be your "best" estimate for his "listen probability" ?
+
+```{r, echo=FALSE}
+pander(tail(head(m,8),2))
+```
+
+
+### Not missing but low N 
+
+### Simple idea: Weighted Average
+
+Instead of using the proportion as is, $\hat{p}_i  = x_i/n_i$, we "borrow" information from the larger samples and compute the weighted average
+
+$$
+\hat{p}_i  = w_i \cdot \hat{\mu} + (1-w_i) \cdot x_i/n_i  \hspace{3cm} (1)
+$$
+What would a good choice for the weight be? 
+Intuitively, when the sample size $n_i$ is large enough, we should "believe" the observed proportion $x_i/n_i$ and use a close-to-zero weight. On the other extreme, for very small $n_i$ the "grand mean" $\hat{\mu}$ should be weighted heavily.
+(Why not simply use $w_i = 1/n_i$ ?)
+The weight should reflect our separate uncertainties about  $x_i/n_i$ and $\hat{\mu}$ separately.
+
+Note that the weighted average "pulls" or "shrinks" the observed proportion towards $\hat{\mu}$, which is why $\hat{p}_i$ is often called a "shrunk or shrinkage (or regularized) estimate". 
+
+### Distribution of proportions
+
+```{r, echo = FALSE}
+pAllTall = gather(as.data.frame(pAll), song, pListen)
+NuTall = gather(as.data.frame(Nu), song, N)
+
+
+g = pAllTall %>% ggplot(aes(pListen, fill = song)) + geom_histogram() + facet_wrap(~ song)
+g
+options(digits=3)
+
+ms = as.data.frame(pAllTall[NuTall$N>10,]  %>% group_by(song)  %>% summarise(mean = mean(pListen,na.rm=TRUE), sd = sd(pListen,na.rm=TRUE)))
+
+ms$shape2=ms$shape1=NA
+for (i in 1:nrow(ms)){
+  ms[i,c("shape1", "shape2")] = BetaShapeParms(ms[i,2], ms[i,3])
+  
+}
+rownames(ms) = ms[,"song"]
+
+#xtable(as.data.frame(ms))
+#print(xtable(as.data.frame(ms)),include.rownames = FALSE, type = "html")
+#g + stat_function(fun=dbeta, colour='red',            
+#            args=list(shape1=ms[1,1], shape2=ms[1,2]))
+```
+
+
+### Empirical Bayes Regularization
+
+(Applied to baseball data: http://varianceexplained.org/r/empirical_bayes_baseball/)
+
+A lot of data takes the form of these success/total counts, where you want to estimate a "proportion of success" for each instance. 
+When you work with pairs of successes/totals like this, you tend to get tripped up by the uncertainty in low counts. 1/2 does not mean the same thing as 50/100; nor does 0/1 mean the same thing as 0/1000. One approach is to filter out all cases that don't meet some minimum, but this isn't always an option: you're throwing away useful information.
+
+
+
+#### Bayes Theorem Revisited
+
+Recall
+https://www.khanacademy.org/math/ap-statistics/probability-ap/stats-conditional-probability/v/bayes-theorem-visualized
+
+```{r, fig.width=6, fig.height=6, echo=FALSE}
+knitr::include_graphics("Figures/KhanBayes.PNG",dpi=125)
+```
+
+We need to generalize this theorem and introduce some new terminology.
+
+$$
+P(H | D) = P(H) \cdot \frac{P(D | H)}{P(D)}
+$$
+
+For hypothesis H (= parameters) and *evidence* D (= "data" = "observations"),
+
+* $P(H)$, the **prior**, is the initial degree of belief in H.
+* $P(H | D)$, the **posterior** is the degree of belief having accounted for the evidence.
+* $P(D | H)$ the **likelihood** of your data.
+* quotient $P(D | H)/P(D)$ represents the support D provides for H.
+        
+
+#### Conjugate Priors
+
+For most  and likelihoods, the posterior distribution is either impossible to compute analytically or a very different family from the prior.
+
+For those rare case, where the prior distribution is of the same kind as the posterior we call it a **conjugate prior**.
+
+#### The Beta distribution
+
+The Beta distribution is a conjugate distribution of the binomial distribution.
+
+$$
+\pi(p | \alpha, \beta) = Beta(\alpha, \beta) = p^{\alpha-1} \cdot (1-p)^{\beta-1}/B(\alpha, \beta)
+$$
+,where $B(\alpha, \beta) = \Gamma(\alpha) \cdot \Gamma(\beta)/\Gamma(\alpha + \beta)$
+
+```{r, echo=FALSE}
+PlotBetaPrior()
+```
+
+##### Moments
+
+$E(X) = \alpha/(\alpha + \beta)$
+
+One can loosely think of the interpretation of a Beta distribution as: "what is the most likely $p$ given $\alpha-1$ success (heads), and $\beta -1$ of failures (tails)", 
+
+
+If $L(k|p)  = Bin(k,p) = {n\choose k}p^k(1-p)^{n-k}$ is the binomial distribution where $p$ is a random variable with a beta distribution $\pi(p | \alpha, \beta) = Beta(\alpha, \beta)$
+then the compound distribution is **another beta distribution with parameters $\alpha + k$, $\beta + n - k$**
+
+#### Using data to estimate the prior
+
+
+```{r, echo = FALSE}
+
+h = hist(pAll[,"Hello"], col = "bisque", main = "", xlab = "p", freq=FALSE, ylim = c(0,10));grid()
+r=range(h$breaks)
+xx = seq(r[1], r[2],length=100)
+
+ab = as.numeric(ms["Hello",c("shape1", "shape2")])
+y2 = dbeta(xx, shape1 = ab[1], shape2 = ab[2])
+lines(xx,y2,col=3,lwd=2)
+
+### better fit using likelihood
+if (0){
+  # negative log likelihood of data given alpha; beta
+  ll <- function(alpha, beta) {
+    -sum(dbetabinom.ab(round(pAll[,"Hello"]*Nu[,"Hello"]), Nu[,"Hello"], alpha, beta, log = TRUE))
+  }
+  
+  m <- mle(ll, start = list(alpha = 1, beta = 10), method = c("L-BFGS-B", "BFGS")[2])
+  #coef(m)
+  y1 = dbeta(xx, shape1 = coef(m)["alpha"], shape2 = coef(m)["beta"])
+  lines(xx,y1,col=2,lwd=2)
+}
+colnames(ms)[4:5] = c("$\\alpha$", "$\\beta$")
+knitr::kable(ms,row.names=FALSE)
+
+
+```
+
+
+
+
+
+### Summary 
+
+Simple algebra yields the posterior as a weighted average as in Eq. (1) with weight
+
+
+$$w = \frac{\alpha + \beta}{\alpha + \beta + n}$$
+
+https://r.amherst.edu/apps/nhorton/Shiny-Bayes/
+
+
+#### Exercises
+
+1. Compute the "posterior means", i.e. the "improved estimates" for the listen probabilities of Ann and Julian
+2. Repeat for all users and create a scatter plot of "raw estimates versus shrunk estimates"
+
+------------------------------------------
+
+### Gaussian 
+
+Observations are normally distributed 
+$$
+Y_i \sim N(\theta_i, \sigma_y^2)
+$$
+(with **known** variance $\sigma_y^2$)
+and so are the parameters:
+$$
+\theta_i \sim N(\mu_0, \sigma_0^2)
+$$
+
+(the prior) 
+
+Shrunk estimate:
+
+$$
+\mu_n = \frac{\sigma_y^2}{\sigma_y^2 + n \cdot \sigma_0^2} \mu_0 +  \frac{n \cdot \sigma_0^2}{\sigma_y^2 + n \cdot \sigma_0^2} \bar{x}
+$$
+
+
+From 
+http://sifter.org/simon/journal/20061211.html
+
+> However, even this isn't quite as simple as it appears. You would think the average rating for a movie would just be... its average rating! Alas, Occam's razor was a little rusty that day. Trouble is, to use an extreme example, what if there's a movie which only appears in the training set once, say with a rating of 1. Does it have an average rating of 1? Probably not! In fact you can view that single observation as a draw from a true probability distribution who's average you want... and you can view that true average itself as having been drawn from a probability distribution of averages--the histogram of average movie ratings essentially. If we assume both distributions are Gaussian, then according to my shoddy math the actual best-guess mean should be a linear blend between the observed mean and the apriori mean, with a blending ratio equal to the ratio of variances. That is: If Ra and Va are the mean and variance (squared standard deviation) of all of the movies' average ratings (which defines your prior expectation for a new movie's average rating before you've observed any actual ratings) and Vb is the average variance of individual movie ratings (which tells you how indicative each new observation is of the true mean--e.g,. if the average variance is low, then ratings tend to be near the movie's true mean, whereas if the average variance is high, then ratings tend to be more random and less indicative), then:
+
+    BogusMean = sum(ObservedRatings)/count(ObservedRatings)
+    K = Vb/Va
+    BetterMean = [GlobalAverage*K + sum(ObservedRatings)] / [K + count(ObservedRatings)]
+
+> But in fact K=25 seems to work well so I used that instead. :)
+
+> The same principle applies to computing the user offsets. The point here is simply that any time you're averaging a small number of examples, the true average is most likely nearer the apriori average than the sparsely observed average. Note if the number of observed ratings for a particular movie is zero, the BetterMean (best guess) above defaults to the global average movie rating as one would expect. 
+
+

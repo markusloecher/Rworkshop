@@ -1,0 +1,156 @@
+---
+title: "Panel Data in R"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+loadNew=FALSE
+```
+
+## 
+
+```{r}
+library(foreign)
+library(plm)
+if (loadNew) {
+  Panel <-read.dta("http://dss.princeton.edu/training/Panel101.dta")
+  save(Panel, file="data/Panel101.rda")
+} else {
+  load("data/Panel101.rda")
+}
+
+head(Panel)
+```
+
+
+```{r}
+coplot(y ~ year|country, type="l", data=Panel) # Lines
+coplot(y ~ year|country, type="b", data=Panel)
+```
+
+## Fixed Effects Model
+
+```{r}
+ols<-lm(y ~ x1, data=Panel)
+summary(ols)
+```
+
+
+### Dummy Model
+
+```{r}
+fixed.dum <-lm(y ~ x1 + factor(country) -1, data=Panel)
+summary(fixed.dum)
+```
+
+
+
+```{r}
+yhat<-fixed.dum$fitted
+library(car)
+ scatterplot(yhat~Panel$x1|Panel$country, boxplots=FALSE, xlab="x1", ylab="yhat",smooth=FALSE)
+ abline(lm(Panel$y~Panel$x1),lwd=3, col="red")
+```
+
+### plm library
+
+```{r}
+fixed <-plm(y~ x1, data=Panel, index=c("country", "year"), model="within")
+summary(fixed)
+
+```
+
+Display the fixed effects (constants for each country)
+
+```{r}
+fixef(fixed) 
+```
+
+Testing for fixed effects, null: OLS better than fixed
+```{r}
+pFtest(fixed, ols) 
+
+```
+
+
+## RANDOM-EFFECTS MODEL(Random Intercept, Partial Pooling Model)
+
+```{r}
+random <-plm(y ~ x1, data=Panel, index=c("country", "year"), model="random")
+summary(random)
+```
+
+Interpretation of the coefficients is tricky since they include both the within-entity and between-entity effects. In the case of TSCS data represents the average effect of Xover Ywhen Xchanges across time and between countries by one unit.
+
+### Hausman test
+
+To decide between fixed or random effects you can run a Hausman test where the null hypothesis is that the preferred model is random effects vs. the alternative the fixed effects (see Green, 2008, chapter 9). It basically tests whether the unique errors (ui) are correlated with the regressors, the null hypothesis is they are not.
+Run a fixed effects model and save the estimates, then run a random model and save the estimates, then perform the test. If the p-value is significant (for example <0.05) then use fixed effects, if not use random effects.
+
+```{r}
+phtest(fixed, random)
+
+```
+
+### Other Tests
+
+Testing time-fixed effects. The null is that no time-fixed effects are needed.
+
+```{r}
+fixed.time<-plm(y ~ x1 + factor(year), data=Panel, index=c("country", "year"), model="within")
+summary(fixed.time)
+
+```
+
+
+```{r}
+pFtest(fixed.time, fixed)
+```
+
+### Testing for random effects
+
+Breusch-Pagan Lagrange Multiplier for random effects. Null is no panel effect (i.e. OLS better).
+
+
+
+```{r}
+pool <-plm(y ~ x1, data=Panel, index=c("country", "year"), model="pooling")
+summary(pool)
+plmtest(pool, type=c("bp"))
+```
+
+### Testing for serial correlation
+
+Serial correlation tests apply to macro panels with long time series. Not a problem in micro panels (with very few years). The null is that there is not serial correlation.
+
+```{r}
+pbgtest(fixed)
+
+```
+
+No serial correlation
+
+
+### Testing for unit roots/stationarity
+
+```{r}
+Panel.set<-plm.data(Panel, index = c("country", "year"))
+library(tseries)
+adf.test(Panel.set$y, k=2)
+
+```
+
+
+
+### Testing for heteroskedasticity
+
+The null hypothesis for the Breusch-Pagan test is homoskedasticity.
+
+Presence of heteroskedasticity
+If heteroskedasticity is detected you can use robust covariance matrix to account for it. 
+```{r}
+library(lmtest)
+ bptest(y ~ x1 + factor(country), data = Panel, studentize=F)
+```
+

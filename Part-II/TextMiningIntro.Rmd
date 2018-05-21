@@ -1,0 +1,544 @@
+---
+title: "Intro To Text Mining"
+author: "M Loecher"
+output:
+   html_document:
+    #variant: markdown_github
+    toc: true
+    #number_sections: true
+    self_contained: yes
+    toc_depth: 3
+    toc_float: true
+    fig_caption: true
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,  message=F,warning = F)
+library(pander)
+library(knitr)
+
+library(pacman)
+p_load(tm, wordcloud,gutenbergr,tidytext,dplyr,stringr,ggplot2,tidyr,scales)
+
+#p_load(openNLP,)
+
+
+```
+
+### Definitions
+
+
+
+* A **token** is a meaningful unit of text, such as a word, that we are interested in using for analysis, and tokenization is the process of splitting text into tokens.
+
+* A **document** is a collection of sentences/strings. 
+
+* **Corpus**: These types of objects typically are collection of documents annotated with additional metadata and details.
+
+* **Document-term matrix**: This is a sparse matrix describing a collection (i.e., a corpus) of documents with one row for each document and one column for each term. The value in the matrix is typically word count or tf-idf
+
+* **Bag-of-Words**
+
+* **n-grams**
+
+* **tf-idf**
+
+### base R first, no extra packages
+
+
+#### Clinton and Trump acceptance speeches
+
+
+Let's get two documents of interest into R, before we can start comparing them, and caculate word counts for each. (Note: we convert all words to lower case)
+
+```{r}
+# First one
+#trump.lines = readLines("http://www.stat.cmu.edu/~ryantibs/statcomp/data/trump.txt")
+#clinton.lines = readLines("http://www.stat.cmu.edu/~ryantibs/statcomp/data/clinton.txt")
+trump.lines = readLines("data/trump.txt")
+clinton.lines = readLines("data/clinton.txt")
+
+trump.lines=subset(trump.lines, nchar(trump.lines) > 0)
+head(trump.lines)
+clinton.lines=subset(clinton.lines, nchar(clinton.lines) > 0)
+head(clinton.lines)
+
+```
+
+### Bag-of-Words
+
+
+The **bag-of-words** model is a central idea to information retrieval and natural language processing. The idea: a document is nothing more than a bag of words, i.e., order doesn't matter, only the word counts
+
+```{r}
+trump.words = strsplit(paste(trump.lines, collapse=" "), split=" ")[[1]]
+trump.wordtab = sort(table(tolower(trump.words)))
+
+# Second one
+
+clinton.words = strsplit(paste(clinton.lines, collapse=" "), split=" ")[[1]]
+clinton.wordtab = sort(table(tolower(clinton.words)))
+```
+
+
+
+#### Simple pre-processing
+
+
+Turns out that both tables actually has an entry for the empty string, ""; let's get rid of these entries
+
+```{r}
+trump.wordtab[names(trump.wordtab) == ""] # We have 1 empty word with Trump
+clinton.wordtab[names(clinton.wordtab) == ""] # We have 312 empty words with Clinton
+trump.wordtab = trump.wordtab[names(trump.wordtab) != ""] 
+clinton.wordtab = clinton.wordtab[names(clinton.wordtab) != ""] # Let's get rid of them
+```
+
+#### Basic comparisons
+
+Top 20 words
+```{r}
+TopWords=rbind(trump=tail(trump.wordtab,20), clinton=tail(clinton.wordtab,20))
+pander(TopWords)
+```
+
+All of them are "meaningless" connection words; wouldn't it be nice to have a way to eliminate those?
+
+
+
+Until then, let's make some basic comparisons. (Note: we know these are imperfect, because our words may contain punctuation marks, etc. Ignore for now, we'll soon see a nice way to clean this up)
+
+```{r}
+# Who had the longer speech (spoke more words)?
+sum(trump.wordtab)
+sum(clinton.wordtab)
+
+# Who used more unique words?
+length(trump.wordtab)
+length(clinton.wordtab)
+
+# Who repeated themselves less (higher percentage of unique words)?
+length(trump.wordtab) / sum(trump.wordtab) * 100
+length(clinton.wordtab) / sum(clinton.wordtab) * 100
+
+# Who used "great" more? 
+trump.wordtab["great"]
+clinton.wordtab["great"]
+```
+
+#### How to go beyond the basics?
+
+Suppose we want to make more advanced comparisons. E.g., given a new (third) document, is it more like the first or the second?
+
+We must think of a way of representing our two documents. We want our representation to: 
+
+1. Be easy to generate from the raw documents, and be easy to work with
+2. Highlight important aspects of the documents, and suppress unimportant aspects
+
+Think we need some fancy representation? Think again! We pretty much already have what we need
+
+### Document-term matrix
+
+
+This is like what we're already doing! Key difference is that we must calculate word counts for words that appear across **all documents**
+
+```{r}
+# Let's set up our third document, the query document
+query.text = "Make America great again."
+query.words = strsplit(query.text, split=" ")[[1]]
+query.wordtab = table(tolower(query.words))
+
+# Let's get all the words, then just consider the unique ones, sorted alphabetically
+all.words = c(names(trump.wordtab), names(clinton.wordtab), names(query.wordtab))
+all.words.unique = sort(unique(all.words))
+nW = length(all.words.unique)
+
+```
+
+
+The document-term-matrix ( that is $(\text{# of documents}) \times (\text{# of unique words})$, or for us, 3 x `r nW`): each row contains the word counts for one document
+
+```{r}
+dt.mat = matrix(0, 3, length(all.words.unique))
+rownames(dt.mat) = c("Trump", "Clinton", "Query")
+colnames(dt.mat) = all.words.unique
+dt.mat[1, names(trump.wordtab)] = trump.wordtab
+dt.mat[2, names(clinton.wordtab)] = clinton.wordtab
+dt.mat[3, names(query.wordtab)] = query.wordtab
+dt.mat[, 1:10]
+```
+
+#### Computing word count differences
+
+Which words had the biggest (absolute) differences in counts between our two documents?
+
+```{r}
+dt.diff = dt.mat[1,] - dt.mat[2,]
+dt.diff[sample(length(dt.diff), 5)]
+dt.diff.abs.sorted = sort(abs(dt.diff), decreasing=TRUE) 
+dt.diff.abs.sorted[1:20] # Top 20 biggest absolute differences
+```
+
+Now we don't know the direction though, e.g., who said "believe" more?
+
+Reminder: `order()`
+
+
+```{r}
+inds.sorted = order(abs(dt.diff), decreasing=TRUE)
+dt.diff[inds.sorted[1:20]] # Top 20 biggest differences, with signs
+```
+
+#### Computing correlations
+
+Which of our two documents is "closest" to the query? Depends on how we define "closest"; but one reasonable way is to use **correlation**, easily computed with the `cor()` function
+
+
+```{r}
+cor(dt.mat[1,], dt.mat[3,])
+cor(dt.mat[2,], dt.mat[3,])
+```
+
+--------------------------------
+
+### Bag of foolishness
+
+
+
+
+```{r, echo=FALSE}
+
+knitr::include_graphics(file.path("Figures","Foolwithatool-300x224.jpg"), dpi=100)
+```
+
+* "A fool with a tool is still a fool" - "A fool without a tool is still a fool"
+
+* "I am against higher taxes and for deregulation." - "I am for higher taxes and against deregulation."
+
+* "Is broccoli bad for health?" - "Broccoli is bad for health."
+
+* "How to teach an old dog new tricks. " - "How an old dog teaches new tricks."
+
+
+#### The tool is the fool?
+
+-------------------------------
+
+### package tm
+
+```{r}
+
+mystopwords <- c("and", "for", "in", "is", "it", "not", "the", "to")
+trump.lines = removeWords(tolower(trump.lines), mystopwords)
+clinton.lines = removeWords(clinton.lines, mystopwords)
+#better:
+
+clinton.lines = removeWords(tolower(clinton.lines), stopwords("english"))
+```
+
+#### Whitespace elimination
+
+```{r}
+stripWhitespace("Together,   we   will   lead.  ")
+```
+
+#### Everything is a corpus
+
+```{r}
+reut21578 <- system.file("texts", "crude", package = "tm")
+reuters <- VCorpus(DirSource(reut21578),
+                   readerControl = list(reader = readReut21578XMLasPlain))
+
+inspect(reuters[[2]])
+
+#manipulate:
+reuters <- tm_map(reuters, stripWhitespace)
+reuters <- tm_map(reuters, content_transformer(tolower))
+reuters <- tm_map(reuters, removeWords, stopwords("english"))
+
+```
+
+```{r}
+dtm <- DocumentTermMatrix(reuters,
+                          control = list(removePunctuation = TRUE,
+                                         stopwords = TRUE))
+inspect(dtm[5:10, 740:743])
+
+```
+
+If we want to find associations (i.e., terms which correlate) with at least $0.8$ correlation for the term opec, then we use findAssocs():
+
+
+```{r}
+findAssocs(dtm, "opec", 0.8)
+```
+
+
+Term-document matrices tend to get very big already for normal sized data sets. Therefore we provide a
+method to remove sparse terms, i.e., terms occurring only in very few documents. Normally, this reduces the
+matrix dramatically; sometimes without losing significant relations inherent to the matrix:
+
+```{r}
+inspect(removeSparseTerms(dtm, 0.4))
+```
+
+
+
+Finally, some fun visualization:
+
+```{r, fig.width=10,fig.height=10}
+
+wordcloud(trump.lines,max.words=60)
+wordcloud(clinton.lines)
+
+```
+
+
+
+### package tidytext
+
+#### First The gutenbergr package
+
+Let's introduce the [gutenbergr](https://github.com/ropenscilabs/gutenbergr) package. The gutenbergr package provides access to the public domain works from the [Project Gutenberg](https://www.gutenberg.org/) collection. 
+We will look at some science fiction and fantasy novels by H.G. Wells, who lived in the late 19th and early 20th centuries. Let's get [*The Time Machine*](https://www.gutenberg.org/ebooks/35), [*The War of the Worlds*](https://www.gutenberg.org/ebooks/36), [*The Invisible Man*](https://www.gutenberg.org/ebooks/5230), and [*The Island of Doctor Moreau*](https://www.gutenberg.org/ebooks/159).
+
+```{r hgwells}
+
+#hgwells <- gutenberg_download(c(35, 36, 5230, 159))
+#save(hgwells, file="data/hgwells.rda")
+load("data/hgwells.rda")
+```
+
+
+Using tidy data principles is a powerful way to make handling data easier and more effective, and this is no less true when it comes to dealing with text. tidy data has a specific structure:
+
+* Each variable is a column
+* Each observation is a row
+* Each type of observational unit is a table
+
+We thus define the tidy text format as being **a table with one-token-per-row.** A token is a meaningful unit of text, such as a word, that we are interested in using for analysis, and tokenization is the process of splitting text into tokens. This one-token-per-row structure is in contrast to the ways text is often stored in current analyses, perhaps as strings or in a document-term matrix. For tidy text mining, the **token** that is stored in each row is most often a single word, but can also be an n-gram, sentence, or paragraph. In the tidytext package, we provide functionality to tokenize by commonly used units of text like these and convert to a one-term-per-row format.
+
+Tidy data sets allow manipulation with a standard set of "tidy" tools, including popular packages such as dplyr, tidyr, ggplot2 , and broom . By keeping the input and output in tidy tables, users can transition fluidly between these packages. We've found these tidy tools extend naturally to many text analyses and explorations. 
+
+A key function is  **unnest_tokens()**:
+
+
+```{r tidy_hgwells}
+
+tidy_hgwells <- hgwells %>%
+  unnest_tokens(word, text) %>%
+  anti_join(stop_words)
+```
+
+The two basic arguments to `unnest_tokens` used here are column names. First we have the output column name that will be created as the text is unnested into it (`word`, in this case), and then the input column that the text comes from (`text`, in this case). Remember that `text_df` above has a column called `text` that contains the data of interest.
+
+After using `unnest_tokens`, we've split each row so that there is one token (word) in each row of the new data frame; the default tokenization in `unnest_tokens()` is for single words, as shown here. Also notice:
+
+* Other columns, such as the line number each word came from, are retained.
+* Punctuation has been stripped.
+* By default, `unnest_tokens()` converts the tokens to lowercase, which makes them easier to compare or combine with other datasets. (Use the `to_lower = FALSE` argument to turn off this behavior).
+
+
+
+Just for kicks, what are the most common words in these novels of H.G. Wells?
+
+```{r }
+tidy_hgwells %>%
+  count(word, sort = TRUE)
+```
+
+Now let's get some well-known works of the Brontë sisters, whose lives overlapped with Jane Austen's somewhat but who wrote in a rather different style. Let's get [*Jane Eyre*](https://www.gutenberg.org/ebooks/1260), [*Wuthering Heights*](https://www.gutenberg.org/ebooks/768), [*The Tenant of Wildfell Hall*](https://www.gutenberg.org/ebooks/969), [*Villette*](https://www.gutenberg.org/ebooks/9182), and [*Agnes Grey*](https://www.gutenberg.org/ebooks/767). We will again use the Project Gutenberg ID numbers for each novel and access the texts using `gutenberg_download()`.
+
+```{r eval = FALSE}
+bronte <- gutenberg_download(c(1260, 768, 969, 9182, 767))
+save(bronte, file="data/bronte.rda")
+```
+
+```{r echo = FALSE}
+load("data/bronte.rda")
+```
+
+```{r tidy_bronte}
+tidy_bronte <- bronte %>%
+  unnest_tokens(word, text) %>%
+  anti_join(stop_words)
+```
+
+What are the most common words in these novels of the Bronte sisters?
+
+```{r }
+tidy_bronte %>%
+  count(word, sort = TRUE)
+```
+
+Interesting that "time", "eyes", and "hand" are in the top 10 for both H.G. Wells and the Bronte sisters.
+
+#### Tidy DocumentTermMatrix
+
+1. By hand:  calculate the frequency for each word for the works of  the Bronte sisters, and H.G. Wells by binding the data frames together. 
+
+```{r frequency}
+
+frequency <- bind_rows(mutate(tidy_bronte, author = "Bronte Sisters"),
+                       mutate(tidy_hgwells, author = "H.G. Wells") ) %>% 
+  mutate(word = str_extract(word, "[a-z']+")) %>%
+  count(gutenberg_id, word) 
+
+
+frequency
+
+```
+
+We use `str_extract()` here because the UTF-8 encoded texts from Project Gutenberg have some examples of words with underscores around them to indicate emphasis (like italics). The tokenizer treated these as words, but we don't want to count "\_any\_" separately from "any" as we saw in our initial data exploration before choosing to use `str_extract()`. 
+
+We can use `spread` and `gather` from tidyr to reshape our dataframe so that it is just what we need for plotting and comparing the three sets of novels.
+
+```{r, fig.width=8, fig.height=8}
+frequency2Plot <- bind_rows(mutate(tidy_bronte, author = "Bronte Sisters"),
+              mutate(tidy_hgwells, author = "H.G. Wells") ) %>% 
+  mutate(word = str_extract(word, "[a-z']+")) %>%
+  count(author, word)  %>% group_by(author) %>%
+  mutate(proportion = n / sum(n)) %>%
+  select(-n) %>%
+  spread(author, proportion) 
+#%>% gather(author, proportion, `Bronte Sisters`:`H.G. Wells`)
+
+
+# expect a warning about rows with missing values being removed
+ggplot(frequency2Plot, aes(x = `Bronte Sisters`, y = `H.G. Wells`)) +
+  geom_abline(color = "gray40", lty = 2) +
+  geom_jitter(alpha = 0.1, size = 2.5, width = 0.3, height = 0.3) +
+  geom_text(aes(label = word), check_overlap = TRUE, vjust = 1.5) +
+  scale_x_log10(labels = percent_format()) +
+  scale_y_log10(labels = percent_format()) +
+  scale_color_gradient(limits = c(0, 0.001), low = "darkslategray4", high = "gray75")
+
+
+```
+
+2. The tm way
+
+
+```{r}
+bronteLong = tapply(bronte$text, bronte$gutenberg_id, paste0, collapse=" ")
+hgwellsLong = tapply(hgwells$text, hgwells$gutenberg_id, paste0, collapse=" ")  
+AllTexts = tolower(c(bronteLong, hgwellsLong))
+  
+GutCorp = SimpleCorpus(VectorSource(AllTexts))
+
+dtm = DocumentTermMatrix(GutCorp, control = list(removePunctuation = TRUE, stopwords = TRUE))
+inspect(dtm[1:9, 1:20])
+```
+
+3. The tidytext way:
+
+```{r}
+myTFIDF <- frequency %>% bind_tf_idf(word, gutenberg_id, n)
+library(tidyr)
+
+tmp <-  myTFIDF %>% select(gutenberg_id,word,tf_idf) %>% spread(word,tf_idf, fill = 0)
+
+```
+
+
+### Clustering of text
+
+```{r}
+hc <- hclust(dist(as.matrix(dtm)), method = "ward")
+
+plot(hc)
+```
+
+#### Exercises
+
+* Try different linkages and count transformations
+
+```{r}
+
+dtm2 = sqrt(as.matrix(dtm))
+dtm2 = log(as.matrix(dtm)+1)
+
+hcWard <- hclust(dist(dtm2), method = "ward")
+plot(hcWard)
+
+hcSingle <- hclust(dist(dtm2), method = "single")
+plot(hcSingle)
+
+hcComplete <- hclust(dist(dtm2), method = "complete")
+plot(hcComplete)
+
+hcAvg <- hclust(dist(dtm2), method = "average")
+plot(hcAvg)
+
+```
+
+* Find out why some Bronte books were classified as Wells material.
+
+* What about k-means
+
+```{r}
+
+BookClusters = kmeans(dtm2, 2)
+#BookClusters
+```
+
+* Find the optimum number of clusters
+
+
+### Further Topics
+
+* tf-idf
+* n-grams
+* Sentiment Analysis
+* Prediction
+
+
+-------------------------------
+
+### IDF weighting
+
+
+How well does our bag-of-words model meet our two goals: 1. easy to set up and use, 2. helpful at teasing out important aspects, and muting unimportant ones?
+
+Not so strong on the second goal (recall the word count differences). But an extension called **inverse-document-frequency** or IDF weighting can help a lot with this
+
+Helps when we have many documents in our collection (also called our corpus). Suppose we have $D$ documents total. IDF weighting works as follows: e.g., the word count
+$$
+(\text{# of times Trump said great})
+$$
+becomes the weighted word count
+$$
+(\text{# of times Trump said great}) \times 
+\log\bigg(\frac{D}{\text{# of documents with word great}}\bigg)
+$$
+(Note: you'll see this as TF-IDF, where the TF stands for **term-frequency**)
+
+So when all documents contain the word in question, the weight is zero. Better to have a large corpus, say $D$ in the hundreds or thousands, not $D=2$ like us
+
+```{r}
+bronte_tfIDF = DocumentTermMatrix(GutCorp, 
+                                  control = list(removePunctuation = TRUE, stopwords = TRUE,
+                                                 weighting = weightTfIdf))
+inspect(bronte_tfIDF[1:9, 1:20])
+```
+
+
+```{r}
+book_words <- tidy_bronte %>% count(gutenberg_id, word, sort = TRUE) %>%   ungroup()
+
+book_words
+```
+
+
+
+
+```{r, eval=FALSE}
+bronte_tfIDF <- book_words %>%
+  bind_tf_idf(word, gutenberg_id, n)
+
+bronte_tfIDF
+```
+
+--------------------------------
+

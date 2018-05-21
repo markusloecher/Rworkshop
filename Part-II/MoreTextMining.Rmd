@@ -1,0 +1,410 @@
+---
+title: "More Text Mining"
+author: "M Loecher"
+output:
+  html_document:
+    fig_caption: yes
+    self_contained: yes
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+    code_folding: hide
+  pdf_document:
+    toc: yes
+    toc_depth: '3'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,  message=F,warning = F)
+library(pander)
+library(knitr)
+#library(bookdown)
+
+library(tm)
+#library(RTextTools)
+#library(wordnet) # for lemmatization
+
+library(wordcloud)
+library(NLP)
+library(openNLP)
+library(SnowballC)  #'  provides wordstem() function
+library(gutenbergr)
+library(tidytext)
+library(dplyr)
+library(tidyr)
+library(stringr)
+#library(scales)
+library(ggplot2)
+library(bookdown)
+
+```
+
+
+
+## tf-idf
+
+One approach of weighting is to look at a term's *inverse document frequency* (idf), which decreases the weight for commonly used words and increases the weight for words that are not used very much in a collection of documents. This can be combined with term frequency to calculate a term's *tf-idf* (the two quantities multiplied together), the frequency of a term adjusted for how rarely it is used. 
+
+```{block}
+The statistic **tf-idf** is intended to measure how important a word is to a document in a collection (or corpus) of documents, for example, to one novel in a collection of novels or to one website in a collection of websites. 
+```
+
+
+It is a rule-of-thumb or heuristic quantity; while it has proved useful in text mining, search engines, etc., its theoretical foundations are considered less than firm by information theory experts. The inverse document frequency for any given term is defined as
+
+$$idf(\text{term}) = \ln{\left(\frac{n_{\text{documents}}}{n_{\text{documents containing term}}}\right)}$$
+
+
+The `bind_tf_idf` function in the tidytext package takes a tidy text dataset as input with one row per token (term), per document. One column (`word` here) contains the terms/tokens, one column contains the documents (`book` in this case), and the last necessary column contains the counts, how many times each document contains each term (`n` in this example). We calculated a `total` for each book for our explorations in previous sections, but it is not necessary for the `bind_tf_idf` function; the table only needs to contain all the words in each document.
+
+
+### A corpus of physics texts
+
+Let's work with another corpus of documents, to see what terms are important in a different set of works. In fact, let's leave the world of fiction and narrative entirely. Let's download some classic physics texts from Project Gutenberg and see what terms are important in these works, as measured by tf-idf. Let's download [*Discourse on Floating Bodies* by Galileo Galilei](http://www.gutenberg.org/ebooks/37729), [*Treatise on Light* by Christiaan Huygens](http://www.gutenberg.org/ebooks/14725), [*Experiments with Alternate Currents of High Potential and High Frequency* by Nikola Tesla](http://www.gutenberg.org/ebooks/13476), and [*Relativity: The Special and General Theory* by Albert Einstein](http://www.gutenberg.org/ebooks/5001).
+
+```{r eval = FALSE}
+library(gutenbergr)
+physics <- gutenberg_download(c(37729, 14725, 13476, 5001), 
+                              meta_fields = "author")
+save(physics, file="data/physics.rda")
+```
+
+```{r physics, echo = FALSE}
+load("data/physics.rda")
+```
+
+
+```{r physics_words, dependson = "physics"}
+physics_words <- physics %>%
+  unnest_tokens(word, text) %>%
+  count(author, word, sort = TRUE) %>%
+  ungroup()
+
+physics_words
+```
+
+Here we see just the raw counts; we need to remember that these documents are all different lengths. Let's go ahead and calculate tf-idf, then visualize the high tf-id words in Figure \@ref(fig:plotphysics).
+
+```{r plotphysics, dependson = "physics_words", fig.width=9, fig.height=6, fig.cap="Highest tf-idf words in classic physics corpus"}
+physics_words <- physics_words %>%
+  bind_tf_idf(word, author, n) 
+
+plot_physics <- physics_words %>%
+  arrange(desc(tf_idf)) %>%
+  mutate(word = factor(word, levels = rev(unique(word)))) %>%
+  mutate(author = factor(author, levels = c("Galilei, Galileo",
+                                            "Huygens, Christiaan", 
+                                            "Tesla, Nikola",
+                                            "Einstein, Albert")))
+
+ggplot(plot_physics[1:20,], aes(word, tf_idf, fill = author)) +
+  geom_col() +
+  labs(x = NULL, y = "tf-idf") +
+  coord_flip()
+```
+
+
+
+## n-grams
+
+We want to tokenize into consecutive sequences of words, called n-grams. By seeing how often word X is followed by word Y, we can then build a model of the relationships between them.
+
+We do this by adding the `token = "ngrams"` option to `unnest_tokens()`, and setting `n` to the number of words we wish to capture in each n-gram. When we set `n` to 2, we are examining pairs of two consecutive words, often called "bigrams":
+
+```{r physics_bigrams}
+
+physics_bigrams <- physics %>%
+  unnest_tokens(bigram, text, token = "ngrams", n = 2)
+
+physics_bigrams
+```
+
+This data structure is still a variation of the tidy text format. It is structured as one-token-per-row (with extra metadata, such as `book`, still preserved), but each token now represents a bigram.
+
+### Counting and filtering n-grams
+
+Our usual tidy tools apply equally well to n-gram analysis. We can examine the most common bigrams using dplyr's `count()`:
+
+```{r, dependson = "physics_bigrams"}
+physics_bigrams %>%
+  count(bigram, sort = TRUE)
+```
+
+As one might expect, a lot of the most common bigrams are pairs of common (uninteresting) words, such as `of the` and `to be`: what we call "stop-words". This is a useful time to use tidyr's `separate()`, which splits a column into multiple based on a delimiter. This lets us separate it into two columns, "word1" and "word2", at which point we can remove cases where either is a stop-word.
+
+```{r bigram_counts, dependson = "physics_bigrams"}
+#library(tidyr)
+
+bigrams_separated <- physics_bigrams %>%
+  separate(bigram, c("word1", "word2"), sep = " ")
+
+bigrams_filtered <- bigrams_separated %>%
+  filter(!word1 %in% stop_words$word) %>%
+  filter(!word2 %in% stop_words$word)
+
+# new bigram counts:
+bigram_counts <- bigrams_filtered %>% 
+  count(word1, word2, sort = TRUE)
+
+bigram_counts
+```
+
+These most common pairs make more sense for physics books.
+
+In other analyses, we may want to work with the recombined words. tidyr's `unite()` function is the inverse of `separate()`, and lets us recombine the columns into one. Thus, "separate/filter/count/unite" let us find the most common bigrams not containing stop-words.
+
+```{r bigrams_united, dependson = "bigram_counts"}
+bigrams_united <- bigrams_filtered %>%
+  unite(bigram, word1, word2, sep = " ")
+
+bigrams_united
+```
+
+In other analyses you may be interested in the most common trigrams, which are consecutive sequences of 3 words. We can find this by setting `n = 3`:
+
+```{r}
+physics %>%
+  unnest_tokens(trigram, text, token = "ngrams", n = 3) %>%
+  separate(trigram, c("word1", "word2", "word3"), sep = " ") %>%
+  filter(!word1 %in% stop_words$word,
+         !word2 %in% stop_words$word,
+         !word3 %in% stop_words$word) %>%
+  count(word1, word2, word3, sort = TRUE)
+```
+
+
+### Analyzing bigrams
+
+This one-bigram-per-row format is helpful for exploratory analyses of the text. As a simple example, we might be interested in the most common "theories" mentioned in each book:
+
+```{r bigrams_filtered_theory, dependson = "bigram_counts"}
+bigrams_filtered %>%
+  filter(word2 %in% c("theory", "theories") ) %>%
+  count(author, word1, sort = TRUE)
+```
+
+A bigram can also be treated as a term in a document in the same way that we treated individual words. For example, we can look at the tf-idf of bigrams across books. These tf-idf values can be visualized within each book, just as we did for words.
+
+```{r bigram_tf_idf, dependson = "bigram_counts"}
+bigram_tf_idf <- bigrams_united %>%
+  count(author, bigram) %>%
+  bind_tf_idf(bigram, author, n) %>%
+  arrange(desc(tf_idf))
+
+bigram_tf_idf
+```
+
+```{r bigramtfidf, dependson = "bigram_tf_idf", echo = FALSE, fig.width=9, fig.height=9, fig.cap = "The 12 bigrams with the highest tf-idf from each physicist"}
+bigram_tf_idf %>%
+  arrange(desc(tf_idf)) %>%
+  top_n(12, tf_idf) %>%
+  ungroup() %>%
+  mutate(bigram = reorder(bigram, tf_idf)) %>%
+  ggplot(aes(bigram, tf_idf, fill = author)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~ author, ncol = 2, scales = "free") +
+  coord_flip() +
+  labs(y = "tf-idf of bigram to author",
+       x = "")
+```
+
+The units that distinguish each scientist could be passed to a classifier.
+
+There are advantages and disadvantages to examining the tf-idf of bigrams rather than individual words. Pairs of consecutive words might capture structure that isn't present when one is just counting single words, and may provide context that makes tokens more understandable. However, the per-bigram counts are also *sparser*: a typical two-word pair is rarer than either of its component words. Thus, bigrams can be especially useful when you have a very large text dataset.
+
+
+## Sentiment Analysis
+
+When human readers approach a text, we use our understanding of the emotional intent of words to infer whether a section of text is positive or negative, or perhaps characterized by some other more nuanced emotion like surprise or disgust. We can use the tools of text mining to approach the emotional content of text programmatically.
+
+One way to analyze the sentiment of a text is to consider the text as a combination of its individual words and the sentiment content of the whole text as the sum of the sentiment content of the individual words. This isn't the only way to approach sentiment analysis, but it is an often-used approach, *and* an approach that naturally takes advantage of the tidy tool ecosystem.
+
+### The `sentiments` dataset
+
+As discussed above, there are a variety of methods and dictionaries that exist for evaluating the opinion or emotion in text. The tidytext package contains several sentiment lexicons in the `sentiments` dataset. 
+
+```{r}
+library(tidytext)
+
+sentiments
+```
+
+The three general-purpose lexicons are
+
+* `AFINN` from [Finn Ãrup Nielsen](http://www2.imm.dtu.dk/pubdb/views/publication_details.php?id=6010),
+* `bing` from [Bing Liu and collaborators](https://www.cs.uic.edu/~liub/FBS/sentiment-analysis.html), and
+* `nrc` from [Saif Mohammad and Peter Turney](http://saifmohammad.com/WebPages/NRC-Emotion-Lexicon.htm).
+
+All three of these lexicons are based on unigrams, i.e., single words. These lexicons contain many English words and the words are assigned scores for positive/negative sentiment, and also possibly emotions like joy, anger, sadness, and so forth. The `nrc` lexicon categorizes words in a binary fashion ("yes"/"no") into categories of positive, negative, anger, anticipation, disgust, fear, joy, sadness, surprise, and trust. The `bing` lexicon categorizes words in a binary fashion into positive and negative categories. The `AFINN` lexicon assigns words with a score that runs between -5 and 5, with negative scores indicating negative sentiment and positive scores indicating positive sentiment. All of this information is tabulated in the `sentiments` dataset, and tidytext provides a function `get_sentiments()` to get specific sentiment lexicons without the columns that are not used in that lexicon.
+
+```{r}
+get_sentiments("afinn")
+get_sentiments("bing")
+get_sentiments("nrc")
+```
+
+### Sentiment analysis with inner join
+
+With data in a tidy format, sentiment analysis can be done as an inner join. This is another of the great successes of viewing text mining as a tidy data analysis task; much as removing stop words is an antijoin operation, performing sentiment analysis is an inner join operation.
+
+Let's look at the words with a joy score from the NRC lexicon. What are the most common joy words in *Emma*? First, we need to take the text of the novels and convert the text to the tidy format using `unnest_tokens()`. Let's also set up some other columns to keep track of which line and chapter of the book each word comes from; we use `group_by` and `mutate` to construct those columns.
+
+```{r tidy_books}
+load("data/bronte.rda")
+table(bronte$gutenberg_id)
+bronte$linenumber = c(1:6828, 1:12085, 1:18084, 1:20659, 1:21312)
+
+tidy_bronte <- bronte %>%
+  unnest_tokens(word, text)
+
+```
+
+Notice that we chose the name `word` for the output column from `unnest_tokens()`. This is a convenient choice because the sentiment lexicons and stop word datasets have columns named `word`; performing inner joins and anti-joins is thus easier.
+
+Now that the text is in a tidy format with one word per row, we are ready to do the sentiment analysis. First, let's use the NRC lexicon and `filter()` for the joy words. Next, let's `filter()` the data frame with the text from the books for the words from *Emma* and then use `inner_join()` to perform the sentiment analysis. What are the most common joy words in *Emma*? Let's use `count()` from dplyr.
+
+```{r nrcjoy, dependson = "tidy_books"}
+nrcjoy <- get_sentiments("nrc") %>% 
+  filter(sentiment == "joy")
+
+tidy_bronte %>%
+  inner_join(nrcjoy) %>%
+  count(word, sort = TRUE)
+```
+
+We see many positive, happy words about hope, friendship, and love here.
+
+Or instead we could examine how sentiment changes throughout each novel. We can do this with just a handful of lines that are mostly dplyr functions. First, we find a sentiment score for each word using the Bing lexicon and `inner_join()`. 
+
+Next, we count up how many positive and negative words there are in defined sections of each book. We define an `index` here to keep track of where we are in the narrative; this index (using integer division) counts up sections of 100 lines of text.
+
+```{block}
+The `%/%` operator does integer division (`x %/% y` is equivalent to `floor(x/y)`) so the index keeps track of which 100-line section of text we are counting up negative and positive sentiment in. 
+```
+
+Small sections of text may not have enough words in them to get a good estimate of sentiment while really large sections can wash out narrative structure. For these books, using 100 lines works well, but this can vary depending on individual texts, how long the lines were to start with, etc. We then use `spread()` so that we have negative and positive sentiment in separate columns, and lastly calculate a net sentiment (positive - negative).
+
+```{r brontesentiment, dependson = "tidy_books"}
+library(tidyr)
+
+#tidy_bronte = arrange(tidy_bronte, )
+
+brontesentiment <- tidy_bronte %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(gutenberg_id, index = linenumber %/% 100, sentiment) %>%
+  spread(sentiment, n, fill = 0) %>%
+  mutate(sentiment = positive - negative)
+```
+
+Now we can plot these sentiment scores across the plot trajectory of each novel. Notice that we are plotting against the `index` on the x-axis that keeps track of narrative time in sections of text.
+
+```{r sentimentplot, dependson = "brontesentiment", fig.width=9, fig.height=10, fig.cap="Sentiment through the narratives of Bronte's novels"}
+
+brontesentiment$gutenberg_id=factor(brontesentiment$gutenberg_id)
+ggplot(brontesentiment, aes(index, sentiment, fill = gutenberg_id)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~gutenberg_id, ncol = 2, scales = "free_x")
+```
+
+We can see in this Figure how the plot of each novel changes toward more positive or negative sentiment over the trajectory of the story.
+
+```{r}
+distinct(bronte, gutenberg_id) %>%
+  inner_join(gutenberg_metadata)  %>% select(gutenberg_id, title)
+```
+
+
+### Using bigrams to provide context in sentiment analysis
+
+This sentiment analysis approch simply counts the appearance of positive or negative words, according to a reference lexicon. One of the problems with this approach is that a word's context can matter nearly as much as its presence. For example, the words "happy" and "like" will be counted as positive, even in a sentence like "I'm not **happy** and I don't **like** it!"
+
+Now that we have the data organized into bigrams, it's easy to tell how often words are preceded by a word like "not":
+
+
+```{r}
+bronte_bigrams <- bronte %>%
+  unnest_tokens(bigram, text, token = "ngrams", n = 2)
+
+bigrams_separated <- bronte_bigrams %>%
+  separate(bigram, c("word1", "word2"), sep = " ")
+
+```
+
+```{r dependson = "bigrams_separated"}
+bigrams_separated %>%
+  filter(word1 == "not") %>%
+  count(word1, word2, sort = TRUE)
+```
+
+By performing sentiment analysis on the bigram data, we can examine how often sentiment-associated words are preceded by "not" or other negating words. We could use this to ignore or even reverse their contribution to the sentiment score.
+
+Let's use the AFINN lexicon for sentiment analysis, which you may recall gives a numeric sentiment score for each word, with positive or negative numbers indicating the direction of the sentiment.
+
+```{r AFINN_ngrams}
+AFINN <- get_sentiments("afinn")
+
+AFINN
+```
+
+We can then examine the most frequent words that were preceded by "not" and were associated with a sentiment.
+
+```{r not_words}
+not_words <- bigrams_separated %>%
+  filter(word1 == "not") %>%
+  inner_join(AFINN, by = c(word2 = "word")) %>%
+  count(word2, score, sort = TRUE) %>%
+  ungroup()
+
+not_words
+```
+
+For example, the most common sentiment-associated word to follow "not" was "like", which would normally have a (positive) score of 2.
+
+It's worth asking which words contributed the most in the "wrong" direction. To compute that, we can multiply their score by the number of times they appear (so that a word with a score of +3 occurring 10 times has as much impact as a word with a sentiment score of +1 occurring 30 times). We visualize the result with a bar plot (Figure \@ref(fig:notwordsplot)).
+
+```{r notwordsplot, dependson = "not_words", fig.width=8, fig.height=6, fig.cap = "The 20 words followed by 'not' that had the greatest contribution to sentiment scores, in either a positive or negative direction"}
+#library(ggplot2)
+
+not_words %>%
+  mutate(contribution = n * score) %>%
+  arrange(desc(abs(contribution))) %>%
+  head(20) %>%
+  mutate(word2 = reorder(word2, contribution)) %>%
+  ggplot(aes(word2, n * score, fill = n * score > 0)) +
+  geom_col(show.legend = FALSE) +
+  xlab("Words preceded by \"not\"") +
+  ylab("Sentiment score * number of occurrences") +
+  coord_flip()
+```
+
+The bigrams "not like" and "not help" were overwhelmingly the largest causes of misidentification, making the text seem much more positive than it is. But we can see phrases like "not afraid" and "not fail" sometimes suggest text is more negative than it is.
+
+"Not" isn't the only term that provides some context for the following word. We could pick four common words (or more) that negate the subsequent term, and use the same joining and counting approach to examine all of them at once.
+
+```{r negated_words, dependson = "bigrams_separated"}
+negation_words <- c("not", "no", "never", "without")
+
+negated_words <- bigrams_separated %>%
+  filter(word1 %in% negation_words) %>%
+  inner_join(AFINN, by = c(word2 = "word")) %>%
+  count(word1, word2, score, sort = TRUE) %>%
+  ungroup()
+```
+
+We could then visualize what the most common words to follow each particular negation are (Figure \@ref(fig:negatedwords)). While "not like" and "not help" are still the two most common examples, we can also see pairings such as "no great" and "never loved." We could combine this with the approaches in Chapter \@ref(sentiment) to reverse the AFINN scores of each word that follows a negation. These are just a few examples of how finding consecutive words can give context to text mining methods.
+
+```{r negatedwords, dependson = "negated_words", fig.width=9, fig.height=9, echo = FALSE, fig.cap = "The most common positive or negative words to follow negations such as 'never', 'no', 'not', and 'without'"}
+negated_words %>%
+  mutate(contribution = n * score) %>%
+  mutate(word2 = reorder(paste(word2, word1, sep = "__"), contribution)) %>%
+  group_by(word1) %>%
+  top_n(12, abs(contribution)) %>%
+  ggplot(aes(word2, contribution, fill = n * score > 0)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~ word1, scales = "free") +
+  scale_x_discrete(labels = function(x) gsub("__.+$", "", x)) +
+  xlab("Words preceded by negation term") +
+  ylab("Sentiment score * # of occurrences") +
+  coord_flip()
+```
+

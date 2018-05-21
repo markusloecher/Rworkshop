@@ -1,0 +1,554 @@
+---
+title: "Gradient Boosting"
+output: 
+  html_document:
+    toc: true
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE)
+library(pacman)
+p_load(rpart, gbm)
+```
+
+## Introduction
+
+[Gradient boosting](https://en.wikipedia.org/wiki/Gradient_boosting) is a
+machine learning technique for regression and classification problems, which
+produces a prediction model in the form of an ensemble of weak prediction
+models, typically decision trees. It builds the model in an iterative fashion
+like other boosting methods do, and it generalizes them by allowing optimization
+of an arbitrary differentiable loss function.
+
+It is recommended that you read through the accompanying [Classification and
+Regression Trees Tutorial](decision-trees.ipynb) for an overview of decision
+trees.
+
+## History
+
+Boosting is one of the most powerful learning ideas introduced in the last
+twenty years. It was originally designed for classification problems, but it can
+be extended to regression as well. The motivation for boosting was a procedure
+that combines the outputs of many "weak" classifiers to produce a powerful
+"committee."  A weak classifier (e.g. decision tree) is one whose error rate is
+only slightly better than random guessing.
+
+[AdaBoost](https://en.wikipedia.org/wiki/AdaBoost) short for "Adaptive
+Boosting", is a machine learning meta-algorithm formulated by [Yoav
+Freund](https://en.wikipedia.org/wiki/Yoav_Freund) and [Robert
+Schapire](https://en.wikipedia.org/wiki/Robert_Schapire) in 1996, which is now
+considered to be a special case of Gradient Boosting.  There are [some
+differences](http://stats.stackexchange.com/questions/164233/intuitive-
+explanations-of-differences-between-gradient-boosting-trees-gbm-ad) between the
+AdaBoost algorithm and modern Gradient Boosting.  In the AdaBoost algorithm, the
+"shortcomings" of existing weak learners are identified by high-weight data
+points, however in Gradient Boosting, the shortcomings are identified by
+gradients.
+
+The idea of gradient boosting originated in the observation by Leo Breiman that
+boosting can be interpreted as an optimization algorithm on a suitable cost
+function. Explicit regression gradient boosting algorithms were subsequently
+developed by Jerome H. Friedman, simultaneously with the more general functional
+gradient boosting perspective of Llew Mason, Jonathan Baxter, Peter Bartlett and
+Marcus Frean. The latter two papers introduced the abstract view of boosting
+algorithms as iterative functional gradient descent algorithms. That is,
+algorithms that optimize a cost function over function space by iteratively
+choosing a function (weak hypothesis) that points in the negative gradient
+direction. This functional gradient view of boosting has led to the development
+of boosting algorithms in many areas of machine learning and statistics beyond
+regression and classification.
+
+## Gradient Boosting
+
+[Gradient boosting](https://en.wikipedia.org/wiki/Gradient_boosting) is a
+machine learning technique for regression and classification problems, which
+produces a prediction model in the form of an ensemble of weak prediction
+models, typically decision trees. It builds the model in a stage-wise fashion
+like other boosting methods do, and it generalizes them by allowing optimization
+of an arbitrary differentiable loss function.
+
+The purpose of boosting is to sequentially apply the weak classification
+algorithm to repeatedly modified versions of the data, thereby producing a
+sequence of weak classifiers $G_m(x)$, $m = 1, 2, ... , M$.
+
+## Housing Data Manipulation/Preprocessing
+
+
+```{r, echo = TRUE}
+
+#library(readr)
+train <- read.csv("//user/home/loecherm/DropboxHWR/PreviousSemesters/SS2017/AnalyticsLab/data/kaggle/HousePrices/train.csv.gz")
+test <- read.csv("//user/home/loecherm/DropboxHWR/PreviousSemesters/SS2017/AnalyticsLab/data/kaggle/HousePrices/test.csv.gz")
+```
+
+```{r}
+cat_var <- names(train)[which(sapply(train, is.factor))]
+cat_car <- unique(c(cat_var, 'BedroomAbvGr', 'HalfBath', ' KitchenAbvGr','BsmtFullBath', 'BsmtHalfBath', 'MSSubClass'))
+numeric_var <- names(train)[which(sapply(train, is.numeric))]
+```
+
+#### Structure of the data
+The housing data set has 1460 rows and 81 features with the target feature Sale Price.
+
+
+
+For now we remove all columns with missing variables
+
+Create new target variable logSale
+
+```{r}
+test$SalePrice = NA
+train$logSale = log(train$SalePrice)
+test$logSale = log(test$SalePrice)
+```
+
+
+```{r missing data}
+  
+#setdiff(colnames(train), colnames(test))
+
+train = train[,intersect(colnames(train), colnames(test))]
+
+jj = is.na(train$SalePrice)
+train$SalePrice[jj] = mean(train$SalePrice, na.rm=TRUE)
+#remove NAs
+mv = colSums(sapply(train, is.na))
+train = train[,mv==0]
+
+test = test[,intersect(colnames(train), colnames(test))]
+
+allData = rbind.data.frame(train,test)
+nTRain=nrow(train)
+nTest=nrow(test)
+
+cat_car = intersect(cat_car, colnames(allData))
+
+for (catCol in cat_car){
+   levels(train[,catCol]) = levels(allData[,catCol])
+   levels(test[,catCol]) = levels(allData[,catCol])
+}
+
+```
+
+
+
+## Iterative Model Improvement:
+
+What is the idea behind this procedure? Unlike fitting a single large decision
+tree to the data, which amounts to fitting the data hard and potentially
+overfitting, the boosting approach instead learns slowly. Given the current
+model, we fit a decision tree to the residuals from the model. That is, we
+fit a tree using the current residuals, rather than the outcome Y , as the response.
+We then add this new decision tree into the fitted function in order
+to update the residuals. Each of these trees can be rather small, with just
+a few terminal nodes, determined by the parameter d in the algorithm.
+
+Let us try this method on a linear model first:
+
+
+1. Fit a linear regression $y_i = \beta_0  + \sum{\beta_j x_{i, j} + u_i$ and obtain residuals as $r_i = y_i - \hat{y}_i$.
+
+2. Fit a linear regression on the residuals: $r_i = \beta_0  + \sum{\beta_j x_{i, j} + u_i$ and update both the estimate as well as the residuals!
+
+3. Repeat as long as you need to.
+
+```{r, echo=TRUE}
+fit0 = lm(logSale ~ LotArea + BedroomAbvGr + factor(YrSold), data = train)
+cat("R2 = ", round(summary(fit0)$r.squared, 4))
+
+yHat0 = fit0$fitted.values
+cat("R = ", round(cor(yHat0, train$logSale), 4), "\n")
+
+res0 = residuals(fit0)
+```
+
+1st Iteration 
+
+```{r, echo=TRUE}
+res1= res0 #train$logSale
+yHat1 = yHat0 #0
+
+for (i in 1:5){
+  train$residuals = res1
+  
+  fit1 = lm(residuals ~ LotArea + BedroomAbvGr + factor(YrSold), data = train)
+  #summary(fit1)$r.squared
+  
+  yHat1 = yHat1 + fit1$fitted.values
+  cat(i, "th, iteration, R = ", round(cor(exp(yHat1), exp(train$logSale)), 4), "\n")
+  res1 = residuals(fit1)
+}
+```
+
+## Modifiy the above into a tree based boosting algorithm
+
+```{r sol1 , echo=FALSE}
+
+myBoost = function(train,
+                   y="logSale",
+                   B= 10,
+                   d=2
+){
+  res_b= train[,y] 
+  yHat_b = 0
+  for (i in 1:B){
+    train$residuals = res_b
+    
+    fit_b = rpart(residuals ~ ., data = train,
+                 control = rpart.control(maxdepth=d), method = "anova")
+    #summary(fit1)$r.squared
+    
+    yHat_b = yHat_b + predict(fit_b)
+    cat(i, "th, iteration, R = ", round(cor(exp(yHat_b), exp(train[,y])), 4), "\n")
+    res_b = residuals(fit_b)
+  }
+}
+
+myBoost(train,d=2)
+```
+
+## Modifiy the above such that we return an actual model, which we can deploy in a train/test situation:
+
+```{r sol2 , echo=FALSE}
+
+myBoost = function(train,
+                   y="logSale",
+                   B= 10,
+                   d=2,
+                   lambda = 1
+){
+  fit_b=list()
+  
+  res_b= train[,y]
+  yHat_b = 0
+  for (i in 1:B){
+    train$residuals = res_b
+    
+    fit_b[[i]] = rpart(residuals ~ ., data = train,
+                  control = rpart.control(maxdepth=d), method = "anova")
+    #summary(fit1)$r.squared
+    
+    yHat_b = yHat_b + lambda*predict(fit_b[[i]])
+    cat(i, "th, iteration, R = ", round(cor(exp(yHat_b), exp(train[,y])), 4), "\n")
+    res_b = residuals(fit_b[[i]])
+  }
+  invisible(fit_b)
+}
+
+########################
+
+myPredict = function(fit1,x, lambda=1,y="logSale"){
+  B=length(fit1)
+  yHat1 = 0
+  
+  for (i in 1:B){
+    yHat1 = yHat1 + lambda*predict(fit1[[i]], new=x)
+    cat(i, "th, iteration, R = ", round(cor(exp(yHat1), exp(x[,y])), 4), "\n")
+  }
+  invisible(yHat1)
+}
+
+
+
+
+```
+
+
+
+```{r}
+set.seed(123)
+iTrain =sample(nrow(train), round(3*nrow(train)/4))
+
+
+boostedTrees = myBoost(train[iTrain,],d=2)
+```
+
+```{r}
+#first double check the training error:
+myPredict(boostedTrees,train[iTrain,])
+```
+
+```{r}
+#now  check the test error:
+myPredict(boostedTrees,train[-iTrain,])
+```
+
+
+
+##### Boosting has (at least) four tuning parameters:
+
+1. The number of trees B. Unlike bagging and random forests, boosting
+can overfit if B is too large, although this overfitting tends to occur
+slowly if at all. We use cross-validation to select B.
+
+2. The shrinkage parameter $\lambda$, a small positive number. This controls the
+rate at which boosting learns. Typical values are 0.01 or 0.001, and
+the right choice can depend on the problem. Very small $\lambda$ can require
+using a very large value of B in order to achieve good performance.
+
+3. The number d of splits in each tree, which controls the complexity
+of the boosted ensemble. Often d = 1 works well, in which case each
+tree is a stump, consisting of a single split. In this case, the boosted
+ensemble is fitting an additive model, since each term involves only a
+single variable. More generally d is the interaction depth, and controls the interaction order of the boosted model, since d splits can involve
+at most d variables.
+
+4. subsampling rate
+
+
+## Stochastic GBM
+
+[Stochastic Gradient Boosting](https://statweb.stanford.edu/~jhf/ftp/stobst.pdf)
+(Friedman, 2002) proposed the stochastic gradient boosting algorithm that simply
+samples uniformly without replacement from the dataset before estimating the
+next gradient step. He found that this additional step greatly improved
+performance.
+
+
+Create some data with missing values and factors:
+
+```{r}
+set.seed(123)
+N <- 1000
+X1 <- runif(N)
+X2 <- 2*runif(N)
+X3 <- ordered(sample(letters[1:4],N,replace=TRUE),levels=letters[4:1])
+X4 <- factor(sample(letters[1:6],N,replace=TRUE))
+X5 <- factor(sample(letters[1:3],N,replace=TRUE))
+X6 <- 3*runif(N) 
+mu <- c(-1,0,1,2)[as.numeric(X3)]
+
+SNR <- 10 # signal-to-noise ratio
+Y <- X1**1.5 + 2 * (X2**.5) + mu
+sigma <- sqrt(var(Y)/SNR)
+Y <- Y + rnorm(N,0,sigma)
+
+# introduce some missing values
+X1[sample(1:N,size=500)] <- NA
+X4[sample(1:N,size=300)] <- NA
+
+data <- data.frame(Y=Y,X1=X1,X2=X2,X3=X3,X4=X4,X5=X5,X6=X6)
+```
+
+```{r}
+# fit initial model
+gbm1 <-
+gbm(Y~X1+X2+X3+X4+X5+X6,         # formula
+    data=data,                   # dataset
+    var.monotone=c(0,0,0,0,0,0), # -1: monotone decrease,
+                                 # +1: monotone increase,
+                                 #  0: no monotone restrictions
+    distribution="gaussian",     # see the help for other choices
+    n.trees=400,                # number of trees
+    shrinkage=0.05,              # shrinkage or learning rate,
+                                 # 0.001 to 0.1 usually work
+    interaction.depth=3,         # 1: additive model, 2: two-way interactions, etc.
+    bag.fraction = 0.5,          # subsampling fraction, 0.5 is probably best
+    train.fraction = 0.5,        # fraction of data for training,
+                                 # first train.fraction*N used for training
+    n.minobsinnode = 10,         # minimum total weight needed in each node
+    cv.folds = 3,                # do 3-fold cross-validation
+    keep.data=TRUE,              # keep a copy of the dataset with the object
+    verbose=FALSE)#,               # don't print out progress
+    #n.cores=1)                   # use only a single core (detecting #cores is
+                                 # error-prone, so avoided here)
+```
+
+```{r}
+# check performance using an out-of-bag estimator
+# OOB underestimates the optimal number of iterations
+best.iter <- gbm.perf(gbm1,method="OOB")
+print(best.iter)
+
+# check performance using a 50% heldout test set
+best.iter <- gbm.perf(gbm1,method="test")
+print(best.iter)
+
+# check performance using cross-validation
+best.iter <- gbm.perf(gbm1,method="cv")
+print(best.iter)
+
+# plot the performance # plot variable influence
+summary(gbm1,n.trees=1)         # based on the first tree
+summary(gbm1,n.trees=best.iter) # based on the estimated best number of trees
+
+# compactly print the first and last trees for curiosity
+print(pretty.gbm.tree(gbm1,1))
+print(pretty.gbm.tree(gbm1,gbm1$n.trees))
+```
+
+
+### Performance on test data:
+
+```{r}
+# make some new data
+set.seed(321)
+N <- 1000
+X1 <- runif(N)
+X2 <- 2*runif(N)
+X3 <- ordered(sample(letters[1:4],N,replace=TRUE))
+X4 <- factor(sample(letters[1:6],N,replace=TRUE))
+X5 <- factor(sample(letters[1:3],N,replace=TRUE))
+X6 <- 3*runif(N) 
+mu <- c(-1,0,1,2)[as.numeric(X3)]
+
+Y <- X1**1.5 + 2 * (X2**.5) + mu + rnorm(N,0,sigma)
+
+data2 <- data.frame(Y=Y,X1=X1,X2=X2,X3=X3,X4=X4,X5=X5,X6=X6)
+
+# predict on the new data using "best" number of trees
+# f.predict generally will be on the canonical scale (logit,log,etc.)
+f.predict <- predict(gbm1,data2,best.iter)
+
+# least squares error
+print(sum((data2$Y-f.predict)^2))
+
+
+```
+
+
+### marginal plots
+
+```{r}
+# create marginal plots
+# plot variable X1,X2,X3 after "best" iterations
+par(mfrow=c(1,3))
+plot(gbm1,1,best.iter)
+plot(gbm1,2,best.iter)
+plot(gbm1,3,best.iter)
+par(mfrow=c(1,1))
+# contour plot of variables 1 and 2 after "best" iterations
+plot(gbm1,1:2,best.iter)
+# lattice plot of variables 2 and 3
+plot(gbm1,2:3,best.iter)
+# lattice plot of variables 3 and 4
+#plot(gbm1,3:4,best.iter)
+
+
+
+
+```
+
+
+### Versatility of use
+
+```{r}
+# do another 100 iterations
+gbm2 <- gbm.more(gbm1,100,
+                 verbose=FALSE) # stop printing detailed progress
+```
+
+
+
+
+## Competing Software
+
+1. xgboost
+2. lightGBM
+3. h20
+
+
+## xgboost
+
+Authors: Tianqi Chen, Tong He, Michael Benesty
+
+Backend: C++
+
+The [xgboost](https://cran.r-project.org/web/packages/xgboost/index.html) R
+package provides an R API to "Extreme Gradient Boosting", which is an efficient
+implementation of gradient boosting framework. [Parameter tuning
+guide](http://www.analyticsvidhya.com/blog/2016/03/complete-guide-parameter-
+tuning-xgboost-with-codes-python/) and more resources
+[here](https://github.com/dmlc/xgboost/tree/master/demo).  The xgboost package
+is quite popular on [Kaggle](http://blog.kaggle.com/tag/xgboost/) for data
+mining competitions.
+
+Features:
+- Stochastic GBM with  column and row sampling (per split and per tree) for
+better generalization.
+- Includes efficient linear model solver and tree learning algorithms.
+- Parallel computation on a single machine.
+- Supports various objective functions, including regression, classification and
+ranking.
+- The package is made to be extensible, so that users are also allowed to define
+their own objectives easily.
+- Apache 2.0 License.
+
+
+```{r}
+library(xgboost)
+
+```
+
+
+----------------------------------------
+
+## Practical Tips
+
+- It's more common to grow shorter trees ("shrubs" or "stumps") in GBM than you
+do in Random Forest.
+- It's useful to try a variety of column sample (and column sample per tree)
+rates.
+- Don't assume that the set of optimal tuning parameters for one implementation
+of GBM will carry over and also be optimal in a different GBM implementation.
+
+## Resources
+ - [Trevor Hastie - Gradient Boosting & Random Forests at H2O World 2014](https:
+//www.youtube.com/watch?v=wPqtzj5VZus&index=16&list=PLNtMya54qvOFQhSZ4IKKXRbMkyL
+Mn0caa) (YouTube)
+ - [Trevor Hastie - Data Science of GBM
+(2013)](http://www.slideshare.net/0xdata/gbm-27891077) (slides)
+ - [Mark Landry - Gradient Boosting Method and Random Forest at H2O World
+2015](https://www.youtube.com/watch?v=9wn1f-30_ZY) (YouTube)
+ - [Peter Prettenhofer - Gradient Boosted Regression Trees in scikit-learn at
+PyData London 2014](https://www.youtube.com/watch?v=IXZKgIsZRm0) (YouTube)
+ - [Alexey Natekin1 and Alois Knoll - Gradient boosting machines, a
+tutorial](http://journal.frontiersin.org/article/10.3389/fnbot.2013.00021/full)
+(blog post)
+
+
+-----------------------------------------
+
+
+## benchmark submission 
+
+
+
+```{r, eval=FALSE}
+
+gbmFit = gbm(SalePrice ~ ., data = train)
+summary(gbmFit)
+preds = predict(gbmFit, test)
+subMiss = cbind.data.frame(Id= test$Id,SalePrice= preds)
+write.csv(subMiss, "C:/DatenLoecher/kaggle/HousePrices/data/GBMsubmission.csv", quote=F, row.names = FALSE)
+```
+
+
+
+### Appendix
+
+## Summarize the missing values in the data.
+
+Viewing the first five rows of the data indicates that there are columns which have missing values. The categorical variables with the largest number of missing values are: Alley,  FirePlaceQu, PoolQC, Fence, and MiscFeature.
+
+* Alley: indicates the type of alley access
+* FirePlaceQu: FirePlace Quality
+* PoolQC: Pool Quality
+* Fence: Fence Quality
+* MiscFeature: Miscellaneous features not covered in other categories
+
+The missing values indicate that majority of the houses do not have alley access, no pool, no fence and no elevator, 2nd garage, shed or tennis court that is covered by the MiscFeature.
+
+The numeric variables do not have as many missing values but there are still some present. There are 259 values for the LotFrontage, 8 missing values for MasVnrArea and 81 missing values for GarageYrBlt.
+
+* LotFrontage: Linear feet of street connected to property
+* GarageYrBlt: Year garage was built
+* MasVnrArea: Masonry veener area in square feet
+
+Definition of Masonry Veener from google:
+Veneer masonry is a popular choice for home building and remodeling, because it gives the appearance of a solid brick or stone wall while providing better economy and insulation. It can be used as an addition to conventional wood frame structures, and can be placed on concrete block walls. 
+
+Brick veeners are not essential to the stucture of the house but are used to chance the appearance of the wall while providing better insulation. They tend to only have one brick layer.
+
+
