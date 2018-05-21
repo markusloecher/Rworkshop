@@ -1,0 +1,1500 @@
+---
+title: "Part II, INTRODUCTION TO MACHINE LEARNING"
+author: "Markus Loecher, Berlin School of Economics and Law"
+output:
+   html_document:
+    #variant: markdown_github
+    toc: true
+    number_sections: true
+    self_contained: yes
+    toc_depth: 2
+    toc_float: true
+    fig_caption: true
+    code_folding: hide
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+
+#source("SetupI.R")
+baseR = FALSE
+Advertising <- read.csv("data/Advertising.csv", row.names = 1)
+library(ISLR)
+data("Wage")
+library(leaps)
+```
+
+# Intro Machine Learning
+
+## Nonlinear Models
+
+### Polynomials
+
+```{r}
+Advertising = Advertising[order(Advertising$TV),]
+fit1= lm(Sales ~ TV, data = Advertising)
+fit2= lm(Sales ~ TV + poly(TV,2), data = Advertising)
+
+summary(fit1)$adj.r.sq
+
+fit2= lm(Sales ~ TV + poly(TV,25), data = Advertising)
+plot(Sales ~ TV, data = Advertising)
+#abline(fit1, col=2, lwd=2)
+lines(Advertising$TV, fit2$fitted.values, col = "green", lwd=2)
+summary(fit2)$adj.r.sq
+abline(fit1,col="blue")
+abline(fit2,col="purple")
+```
+
+
+
+### model comparison
+
+See page 130 in the ISL book.
+
+The anova() function performs a hypothesis
+test comparing the two models. The null hypothesis is that the two models
+fit the data equally well, and the alternative hypothesis is that the full
+model is superior. 
+
+```{r}
+anova(fit1,fit2)
+```
+
+Here the F-statistic is 2.6 and the associated p-value is too high to reject. 
+
+### GAMs
+
+The s() function, which is part of the gam library, is used to indicate that we would like to use a smoothing spline. We specify that the function of year should have 4 degrees of freedom, and that the function of age will have 5 degrees of freedom. Since education is qualitative, we leave it as is, and it is converted into four dummy variables.We use the gam() function in gam()
+order to fit a GAM using these components. All of the terms are fit simultaneously, taking each other into account to explain the response.
+
+```{r}
+library (gam)
+gam.m3=gam(wage ~ s(year ,4)+s(age ,5)+education ,data=Wage)
+
+par(mfrow =c(1,3))
+plot(gam.m3, se=TRUE ,col ="blue ")
+
+```
+
+In these plots, the function of year looks rather linear. We can perform a series of ANOVA tests in order to determine which of these three models is best: a GAM that excludes year (M1), a GAM that uses a linear function of year (M2), or a GAM that uses a spline function of year (M3).
+
+```{r}
+gam.m1=gam(wage ~ s(age ,5) +education ,data=Wage)
+gam.m2=gam(wage ~ year+s(age ,5)+education ,data=Wage)
+anova(gam.m1 ,gam.m2 ,gam.m3,test="F")
+```
+
+We find that there is compelling evidence that a GAM with a linear function
+of year is better than a GAM that does not include year at all
+(p-value=0.00014). However, there is no evidence that a non-linear function of year is needed (p-value=0.349). In other words, based on the results of this ANOVA, M2 is preferred.
+
+### mgcv library
+
+```{r}
+#detach("package:gam", unload=TRUE)
+library(mgcv)
+
+gam.m4= mgcv::gam(wage ~ s(year ,k=4)+s(age ,k=5)+education ,data=Wage)
+
+par(mfrow =c(1,2))
+plot(gam.m4, se=TRUE ,col ="blue ")
+
+```
+
+### Locations of knots
+
+For penalized regression spline, the exact locations are not important, as long as:
+
+* k is adequately big;
+* the spread of knots has good, reasonable coverage.
+
+By default:
+
+* natural cubic regression spline bs = 'cr' places knots by quantile;
+* B-splines family (bs = 'bs', bs = 'ps', bs = 'ad') place knots evenly.
+
+Compare the following:
+
+```{r}
+library(mgcv)
+
+## toy data
+set.seed(0); x <- sort(rnorm(400, 0, pi))  ## note, my x are not uniformly sampled
+set.seed(1); e <- rnorm(400, 0, 0.4)
+y0 <- sin(x) + 0.2 * x + cos(abs(x))
+y <- y0 + e
+
+## fitting natural cubic spline
+cr_fit <- gam(y ~ s(x, bs = 'cr', k = 20))
+cr_knots <- cr_fit$smooth[[1]]$xp  ## extract knots locations
+
+## fitting B-spline
+bs_fit <- gam(y ~ s(x, bs = 'bs', k = 20))
+bs_knots <- bs_fit$smooth[[1]]$knots  ## extract knots locations
+
+## summary plot
+par(mfrow = c(1,2))
+plot(x, y, col= "grey", main = "natural cubic spline");
+lines(x, cr_fit$linear.predictors, col = 2, lwd = 2)
+abline(v = cr_knots, lty = 2)
+plot(x, y, col= "grey", main = "B-spline");
+lines(x, bs_fit$linear.predictors, col = 2, lwd = 2)
+abline(v = bs_knots, lty = 2)
+```
+
+
+### Setting your own knots locations:
+
+You can also provide your customized knots locations via the knots argument of gam() (yes, knots are not fed to s(), but to gam()). For example, you can do evenly spaced knots for cr:
+
+```{r}
+xlim <- range(x)  ## get range of x
+myfit <- gam(y ~ s(x, bs = 'cr', k =20),
+         knots = list(x = seq(xlim[1], xlim[2], length = 20)))
+```
+
+
+Now you can see that:
+
+```{r}
+my_knots <- myfit$smooth[[1]]$xp
+plot(x, y, col= "grey", main = "my knots");
+lines(x, myfit$linear.predictors, col = 2, lwd = 2)
+abline(v = my_knots, lty = 2)
+```
+
+
+### nearest neighbor models
+
+```{r}
+library(kknn)
+
+#fitNN = kknn(Sales ~ TV, distance=10, train = Advertising)
+
+train=sample(nrow(Advertising),100)
+Ad.kknn = kknn(Sales ~ TV, Advertising[train,],Advertising[-train,],distance=1, k = 50)
+fit4 = fitted(Ad.kknn)
+plot(Sales ~ TV, data = Advertising)
+points(Sales ~ TV, data = Advertising[train,],col="green")
+points(Advertising[-train,"TV"],fit4,col="red")
+
+```
+
+What is the R squared equivalent for nearest neighbors?
+
+```{r}
+cor(Advertising[-train,"Sales"],fit4)^2
+```
+
+## Classification
+
+Let us make a binary feature in the Advertising data:
+
+```{r}
+Advertising$HighSales = Advertising$Sales > median(Advertising$Sales)
+Advertising$HighSales = factor(Advertising$HighSales)
+Ad.kknn.Class = kknn(HighSales ~ TV, Advertising[train,],Advertising[-train,],distance=1, k = 5)
+PredClass = fitted(Ad.kknn.Class)
+```
+
+For classification NN is a majority vote !
+
+### Quality measure for Classification
+
+Confusion Matrix !!!
+
+```{r}
+PredClass = fitted(Ad.kknn.Class)
+ActualClass = Advertising[-train,]$HighSales
+#compare PredClass with ActualClass
+ConfMat = table(PredClass,ActualClass)
+colnames(ConfMat) = c("Low", "High")
+rownames(ConfMat) = c("Low", "High")
+ConfMat
+```
+
+1. Overall error: (9+13)/100
+2. 9/100 times I falsely predicted Low
+2. 13/100 times I falsely predicted High
+
+What is the model flexibility for nearest neighbors ?
+
+Disadvantages
+
+1. Absolutely no variable selection/weighting
+2. Difficult to interpret or take stories away
+3. Curse of dimensionality
+
+
+## Test Error Estimation
+
+### Overfitting
+
+
+base model:
+
+```{r}
+library(MASS)
+data("Boston")
+train = Boston[1:250,]
+fit1 = lm(medv ~ rm + crim + rad + dis, data = train)
+summary(fit1)$r.square
+
+fit2 = lm(medv ~ . , data = train)
+summary(fit2)$r.squared
+
+summary(fit1)$adj.r.squared
+summary(fit2)$adj.r.squared
+```
+
+### train/test
+
+Can we divide our data into train and test ??
+
+```{r}
+test = Boston[-(1:250),]
+
+preds1 = predict(fit1, test)
+preds2 = predict(fit2, test)
+```
+
+ prediction error usually measured as rmse
+
+```{r}
+(rmse1=sqrt(mean((preds1-test$medv)^2)))
+(rmse2=sqrt(mean((preds2-test$medv)^2)))
+
+cor(preds1, test$medv)^2
+cor(preds2, test$medv)^2
+
+ 
+```
+
+There is a general attempt to be parsimonious in modeling 
+
+####  Occam's razor:  the smallest model possible is the best
+
+```{r}
+
+TestError = function(
+  x=Advertising,
+  k=2
+){
+  set.seed(1234)
+  #split into train and test
+  N = nrow(x)
+  trainRows = sample(N,round(0.5*N))# we choose no replacement. With replacement is called bootstrap 
+  xTrain = x[trainRows,]
+  xTest = x[-trainRows,]
+  #fit on train
+  fit = lm(Sales ~ poly(TV,k), data = xTrain)
+  #predict on test
+  preds = predict(fit, xTest)
+  #compute SS
+  TrainError = sum((fit$fitted.values-xTrain$Sales)^2)
+  cat("train error:", TrainError, "\n")
+  PredError = sum((preds-xTest$Sales)^2)
+  return(PredError)
+}
+
+TestError(Advertising, 2)
+TestError(Advertising, 20)
+```
+
+
+
+## Cross validation
+
+```{r}
+myCV = function(
+  x=Advertising,
+  form = as.formula(Sales ~ TV + Newspaper + Newspaper:TV),
+  kfold = 10,
+  verbose = 0
+){
+  set.seed(123)
+  #split into train and test
+  N = nrow(x)
+  PredError=vector()
+  
+  trainRows = rep_len(1:kfold, N)
+  for(k in 1:kfold)         
+  {
+    fold = which(trainRows == k)    
+    xTrain <- x[-fold,]
+    xTest <- x[fold,]
+    
+    #fit on train
+    fit = lm(form, data = xTrain)
+    #predict on test
+    preds = predict(fit, xTest)
+    #compute SS
+    TrainError = mean((fit$fitted.values-xTrain$Sales)^2)
+    PredError[k] = mean((preds-xTest$Sales)^2)
+    if (verbose) cat("pred error:", round(PredError[k],2), "\n")
+  }
+  #how many elements in PredError ?
+  return(mean(PredError))
+}
+
+myCV()
+```
+
+
+#### knn CV
+
+```{r}
+CVknn = function(
+  x=Advertising,
+  kNN = 10, # number of nearets neighbors
+  form = as.formula(Sales ~ TV + Newspaper),
+  y = "Sales",
+  kfold = 10,
+  verbose = 0
+){
+  library(kknn)
+  set.seed(123)
+  x = x[sample(1:nrow(x)),]
+  #split into train and test
+  N = nrow(x)
+  PredError=vector()
+  
+  trainRows = rep_len(1:kfold, N)
+  for(k in 1:kfold)         
+  {
+    fold = which(trainRows == k)    
+    xTrain <- x[-fold,]
+    xTest <- x[fold,]
+    
+    #fit on train
+    fit = kknn(form, xTrain, xTest,distance=1, k = kNN)
+    #predict on test
+    preds = fitted(fit)
+    #compute SS
+    #TrainError = mean((fit$fitted.values-xTrain$Sales)^2)
+    PredError[k] = mean((preds-xTest[,y])^2)
+    if (verbose) cat("pred error:", round(PredError[k],2), "\n")
+  }
+  #how many elements in PredError ?
+  return(mean(PredError))
+}
+CVknn(kNN=10)
+CVknn(kNN=50)
+CVknn(kNN=100)
+```
+
+
+
+## ROC curves
+
+```{r}
+train <- read.csv("data/TitanicTrain.csv")
+
+fit = glm(Survived ~ Sex + Age, family = binomial, data = train)
+summary(fit)
+
+# we could remove the NAs
+train = na.omit(train)
+# you are losing 177 valuable data points
+# at the same time : sqrt(N) law "diminishing returns"
+# on age my Stderr is 0.007656 on 714 data points
+# what would you expect the Stderr to be for the full 891 points ?
+# 
+
+# This discussion on imputation (replacing missing values) in itself is a huge modeling effort!!
+
+# 1. instead you could do a "mean imputation", where you replace missing age with its mean
+# 2. why not develop a full model
+#e.g. AgeFit = lm(Age ~ Pclass + Sex , data = train)
+# however: two dangers:
+#1. overfittingis more subtle !!
+#2. the uncertainties (stderrors on your coefficients) are not reliable anymore
+
+# I have 714 rows with no more missing values!!
+
+#2. Predict
+#The default prediction gives you values from the link function
+# which need more manipulation to interpret
+# type="response" gives you straight probabilities (remember the log odds)
+# with no newdata, predict just predicts on the train set
+
+# the NA behavior of predict varies depending on explicitly providing "newdata=train"
+preds = predict(fit, newdata=train,type="response")
+head(preds)
+# Confusion  Matrix
+
+#BIG DECISION: WHAT CUTOFF TO USE!!
+pCutoff = 0.5
+  
+# we "binarize" our predictions
+SurvPreds = preds > pCutoff
+length(SurvPreds)
+
+# warning: we have missing ages !!
+sum(is.na(train$Age))
+sum(is.na(SurvPreds))
+# Confusion  Matrix
+
+#had you not removed the NAs properly
+#at this point you would have different vectors lenghts!
+ConfMat = table(SurvPreds, train$Survived)
+TN = sum(ConfMat[,1])#true negatives
+TP = sum(ConfMat[,2])#true positives
+
+FPR = ConfMat[2,1]/TN
+FNR = ConfMat[1,2]/TP
+
+FPR=FNR=TPR=vector()
+pCutoffs = seq(0.2,0.75, by = 0.01)
+
+for (i in 1:length(pCutoffs)){
+  SurvPreds = preds > pCutoffs[i]
+  ConfMat = table(SurvPreds, train$Survived)
+  TN = sum(ConfMat[,1])#true negatives
+  TP = sum(ConfMat[,2])#true positives
+  
+  FPR[i] = ConfMat[2,1]/TN # False Positive Rate
+  FNR[i] = ConfMat[1,2]/TP # False Negative Rate
+  #TPR proportion of positives that are correctly identified
+  TPR[i] = ConfMat[2,2]/TP
+}
+
+# ROC curve:
+
+plot(FPR,TPR, type="l", lwd=2, main = "ROC curv");grid()
+lines(FPR,TPR,col="red")
+
+```
+
+## Classification by trees
+
+```{r}
+data(iris)
+#iris data
+
+plot(Sepal.Length ~ Petal.Length, data=iris, pch = 20, col = as.numeric(iris$Species))
+grid()
+#get the unique categorical values
+(yk=unique(iris$Species))[1]
+yk=levels(iris$Species)
+paste0("Species=",yk)
+```
+```{r}
+plot(Sepal.Width ~ Petal.Width, data=iris, pch = 20, col = as.numeric(iris$Species))
+grid()
+```
+
+```{r, fig.height=7, fig.width= 6}
+library(rpart)
+#par(mar=c(6,6,6,6))
+myFirstTree = rpart(Species ~ ., data = iris)
+plot(myFirstTree)
+text(myFirstTree)
+
+```
+```{r}
+library(partykit)
+plot(as.party(myFirstTree))
+```
+
+
+### Quality of Classification 
+
+For example, in a two-class problem with 400 observations in each class (denote this by (400, 400)), suppose one split created nodes (300, 100) and (100, 300), while the other created nodes (200, 400) and (200, 0). Compute the misclassification rate and write it down formally.
+
+## Gini Index
+
+### Node Impurity in trees
+
+A classification tree is built by the following process: first the single variable
+is found which best splits the data into two groups (`best' will be defined
+shortly).  The data is separated, and then this process is applied
+*separately* to each sub-group, and so on recursively until the subgroups either reach a minimum size or until no improvement can be made.
+
+The partitioning method can be applied to many different kinds of
+data.  We will start by looking at the classification problem,
+which is one of the more instructive cases (but also has the
+most complex equations).
+The sample population consists of $n$ observations from $K$ classes.  A given
+model will break these observations into $k$ terminal groups;
+to each of these groups is assigned a predicted class.
+
+Most tree algorithms use one of several measures of impurity, or diversity, of a node.  Let us denote $\hat{p}_{mk}$ as the proportion of training observations in the $m$th region that are from the $k$th class. We then define the *Gini index* as
+$$
+G_m = \sum_{i=1}^K { \hat{p}_{mk}(1 - \hat{p}_{mk} ) }
+$$
+Remembering $p (1-p)$ to be the variance of the Bernoulli distribution, the Gini index measures the total variance across the $K$ classes. For nearly "pure" regions (all $\hat{p}_{mk}$ being close to 0 or 1), it takes on a very small value.
+
+An alternative measure is given by the information index or *cross entropy* 
+$$
+D_m = - \sum_{i=1}^K { \hat{p}_{mk} \log{ \hat{p}_{mk} } }
+$$
+
+NOTE: The expressions above are general enough for multiple category classification and hence more complicated than the version discussed in class.For binary outcomes $(y \in 0,1)$ the Gini index reduces to simply
+$$
+G_m = 2 \hat{p}_m (1 - \hat{p}_m ) 
+$$
+
+The two impurity functions are plotted in the figure below,
+along with a rescaled version of the Gini measure.
+For the two class problem the measures differ only slightly, and
+will nearly always choose the same split point.
+
+
+```{r, echo=FALSE}
+library(RColorBrewer)
+COLS = brewer.pal(3, "Dark2")
+ptemp <- seq(0, 1, length = 101)[2:100]
+gini <- 2* ptemp *(1-ptemp)
+inform <- -(ptemp*log(ptemp) + (1-ptemp)*log(1-ptemp))
+sgini <- gini *max(inform)/max(gini)
+matplot(ptemp, cbind(gini, inform, sgini), type = 'l', lty = 1:3,
+        xlab = "P", ylab = "Impurity", col = COLS, lwd=2)
+legend(.3, .2, c("Gini", "Information", "rescaled Gini"),
+       lty = 1:3, col = COLS, bty = 'n')
+```
+
+For the total split impurity, we need to weight the node impurity measures by the number $N_{mL}$ and $N_{mR}$ of
+observations in the two child nodes ("left" L and "right" R) created by splitting node $m$.
+
+
+### Titanic data
+
+BUilding a tree  on the Titanic survival data:
+
+```{r, echo=TRUE, fig.width=12}
+#train <- read.csv("../data/TitanicTrain.csv")
+library(partykit, quietly = TRUE)
+train$Pclass = factor(train$Pclass)
+train$Survived = factor(train$Survived)
+
+naRows = is.na(train$Age)
+
+fit = ctree(Survived ~ Age + Sex + Pclass, data= train[!naRows,])
+plot(fit)
+```
+
+Why does the tree **not** split on passenger class 1 and 2 for female passengers ? 
+
+```{r}
+FemalePclass12 = subset(train[!naRows,], Sex =="female" & Pclass %in% 1:2)
+(ST=table(FemalePclass12$Survived, FemalePclass12$Pclass))
+x=ST["1",1:2]
+n=colSums(ST[,1:2])
+
+prop.test(x,n)
+```
+
+Why does the tree **not** split on male passengers older than 9 years and classes 2 and 3
+
+```{r}
+MalePclass23 = subset(train[!naRows,], Sex =="male" & Pclass %in% 2:3 & Age > 9)
+(ST=table(MalePclass23$Survived, MalePclass23$Pclass))
+x=ST["1",2:3]
+n=colSums(ST[,2:3])
+
+prop.test(x,n)
+```
+
+
+Somewhat hard to believe that we find a statistically significant difference in survival probability among 1st class males that are above and below age 52 !?:
+
+
+```{r}
+MalePclass1 = subset(train[!naRows,], Sex =="male" & Pclass %in% 1 )
+(ST=table(MalePclass1$Survived, MalePclass1$Age > 52))
+x=ST["1",]
+n=colSums(ST)
+
+prop.test(x,n)
+```
+
+Why is our p-value (0.01) less than the one reported by ctree (0.02) ?
+
+```{r}
+k=2
+p=0.01019
+1 - (1 - p)^k
+```
+
+### Surrogate Splits
+
+```{r, fig.width=12}
+library(rpart)
+library(partykit, quietly = TRUE)
+
+library(MASS)
+fitWithSurrogates=rpart(medv~.,Boston)
+plot(as.party(fitWithSurrogates))
+summary(fitWithSurrogates)
+
+fitNoSurrogates=rpart(medv~.,Boston, maxsurrogate = 0)
+plot(as.party(fitNoSurrogates))
+summary(fitNoSurrogates)
+                
+```
+
+Let us predict on two new data points where we introduce missing values:
+
+```{r, fig.width=10}
+head(Boston[,c("rm", "lstat", "crim", "dis")],2)
+newX=head(Boston,2)
+predict(fitWithSurrogates, newdata=newX)
+#nodes 9 and 8
+newX$rm=mean(c(NA))
+predict(fitWithSurrogates, newdata=newX)
+# Primary splits:
+#      rm      < 6.941    to the left,  improve=0.4527442, (0 missing)
+#Surrogate splits:
+#      lstat   < 4.83     to the right, agree=0.891, adj=0.276, (0 split)
+Boston$PrimarySplit = Boston$rm < 6.941
+Boston$SurrogateSplit = Boston$lstat   > 4.83
+boxplot(medv ~ PrimarySplit, at = (1:2)*2.5, col = "blue", data = Boston, xlim = c(2, 7), ylim = range(0,50),xaxt = "n", ylab = "medv")
+boxplot(medv ~ SurrogateSplit, at = (1:2)*2.5+1, col = "bisque", data = Boston, xaxt = "n", add = TRUE)
+grid();title("Primary vs. surrogate split")
+axis(1, at = c((1:2)*2.5,(1:2)*2.5+1), labels = c("rm < 6.94","rm > 6.94", "lstat > 4.83", "lstat < 4.83"), tick = TRUE)
+
+#or ggplot:
+#library(ggplot2)
+#q <- qplot(PrimarySplit,medv,data=Boston,geom="boxplot")
+#q + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+#library(lattice)
+#bwplot(medv ~ PrimarySplit | SurrogateSplit, data = Boston)
+
+```
+
+  
+### Comparing ROC curves
+
+```{r}
+myROC = function(fits, 
+                 TrueCategory=train$Survived,
+                 train
+){
+  ROC = list()
+  lab = names(fits)
+  M=length(fits)
+  
+  for (k in 1:M ){
+    cat("working on", lab[k], "\n")
+    if (lab[k]=="rpart" | lab[k]== "party")
+       preds = predict(fits[[k]], newdata=train, type="prob")[,2]
+    else 
+      preds = predict(fits[[k]], newdata=train, type="response")
+    FPR=FNR=TPR=vector()
+    pCutoffs = seq(0.025,0.975, by = 0.01)
+    
+    for (i in 1:length(pCutoffs)){
+      SurvPreds = factor(preds > pCutoffs[i], levels = c(TRUE,FALSE))
+      ConfMat = table(SurvPreds, TrueCategory)
+      TN = sum(ConfMat[,1])#true negatives
+      TP = sum(ConfMat[,2])#true positives
+      
+      FPR[i] = ConfMat[2,1]/TN # False Positive Rate
+      FNR[i] = ConfMat[1,2]/TP # False Negative Rate
+      #TPR proportion of positives that are correctly identified
+      TPR[i] = ConfMat[2,2]/TP
+    }
+    ROC[[k]] = cbind(FPR,TPR)
+  }
+  
+  plot(FPR ~ TPR, data = ROC[[1]], type="l", lwd=2, main = "ROC curve", xlim=c(0,1), ylim=c(0,1));grid()
+  if (M>1)
+    for (k in 2:M)
+     lines(FPR ~ TPR, data = ROC[[k]], col=k,lwd=2)
+  
+  legend("bottomright", col=1:M,lwd=2,legend=lab)
+}
+
+```
+
+
+```{r}
+
+
+fit1 = glm(Survived ~ Sex + Age + Pclass, family = binomial, data = na.omit(train))
+
+fit2 = rpart(Survived ~ Sex + Age + Pclass, data = train)
+
+fit3 = ctree(Survived ~ Age + Sex + Pclass, data= train)
+
+fits=list(fit1, fit2, fit3);names(fits)=c("glm", "rpart", "party")
+myROC(fits,train=train)
+```
+
+### Regression Trees
+
+```{r}
+library(tree)
+
+library(MASS)
+set.seed(1)
+train = sample(1:nrow(Boston), nrow(Boston)/2)
+tree.boston=tree(medv~.,Boston,subset=train,minsize = 8, mindev = 0.005)
+summary(tree.boston)
+plot(tree.boston)#, margin = 0.05)
+text(tree.boston,pretty=0)
+cv.boston=cv.tree(tree.boston)
+plot(cv.boston$size,cv.boston$dev,type='b')
+prune.boston=prune.tree(tree.boston,best=5)
+plot(prune.boston)
+text(prune.boston,pretty=0)
+yhat=predict(tree.boston,newdata=Boston[-train,])
+boston.test=Boston[-train,"medv"]
+plot(yhat,boston.test)
+abline(0,1)
+mean((yhat-boston.test)^2)
+```
+
+
+
+## Variable Selection
+
+
+```{r , include=FALSE}
+FigDir="H:/DropboxHWR/PreviousSemesters/SS2017/AnalyticsLab/Lessons/Figures/"
+
+library(ISLR)
+data(Hitters)
+Hitters=na.omit(Hitters)
+
+```
+
+
+### Bigger is better ? More variables = better ?
+
+#### churn
+
+```{r}
+
+churn <- read.csv("data/churn.csv", stringsAs=TRUE)
+set.seed(1)
+train=sample( nrow(churn), 400)
+
+#fitSmall = glm(Churn ~ CellPlan + Sex + Age, data = churn[train,], family = binomial)
+fitSmall = glm(Churn ~ CellPlan + Sex + Age, data = churn[train,-14], family = binomial)
+predSmall = predict(fitSmall, newdata = churn[-train,], type="response")
+(ConfMatSmall = table(predSmall>0.5,churn[-train,"Churn"]))
+(Accuracy = round(sum(diag(ConfMatSmall))/sum(ConfMatSmall) , 2))
+
+#model matrix
+
+mm = model.matrix(Churn ~ CellPlan + Sex + Age - 1, data = churn[train,])
+mm = model.matrix(fitSmall)
+
+# wide data (p > n)
+
+#IllConsidered = glm(Churn ~ ., data = churn[1:20,], family = binomial)
+
+```
+
+#### Your turn: repeat for  <font size="14">BIG model</font> !
+
+```{r, eval= FALSE, echo = FALSE}
+####big model:
+sapply(churn,function(x) length(unique(x)))
+which(colnames(churn)=="region")
+
+try({
+  fitBig = glm(Churn ~ . , data = churn[train,-14], family = binomial)
+  predBig = predict(fitBig, newdata = churn[-train,], type="response")
+  (ConfMatBig = table(predBig>0.5,churn[-train,"Churn"]))
+  (Accuracy = round(sum(diag(ConfMatBig))/sum(ConfMatBig) , 2))
+})
+```
+
+
+
+
+### Best Subset Selection
+
+#### Quiz: how many models need to be fitted for $p$ predictors ?
+
+
+```{r}
+
+
+library(leaps)
+#regfit.full=regsubsets(Salary~.,Hitters)
+#summary(regfit.full)
+regfit.full=regsubsets(Salary ~.,data=Hitters,nvmax=19)
+reg.summary=summary(regfit.full)
+
+reg.summary$rsq
+par(mfrow=c(2,2))
+plot(reg.summary$rss,xlab="Number of Variables",ylab="RSS",type="l")
+plot(reg.summary$adjr2,xlab="Number of Variables",ylab="Adjusted RSq",type="l")
+#which.max(reg.summary$adjr2)
+points(11,reg.summary$adjr2[11], col="red",cex=2,pch=20)
+plot(reg.summary$cp,xlab="Number of Variables",ylab="Cp",type='l')
+#which.min(reg.summary$cp)
+points(10,reg.summary$cp[10],col="red",cex=2,pch=20)
+which.min(reg.summary$bic)
+plot(reg.summary$bic,xlab="Number of Variables",ylab="BIC",type='l')
+points(6,reg.summary$bic[6],col="red",cex=2,pch=20)
+coef(regfit.full,6)
+
+```
+
+
+### Forward and Backward Stepwise Selection
+
+Unlike best subset selection, which involved fitting $2^p$ models, forward
+stepwise selection involves fitting one null model, along with $p-k$ models
+in the $k$th iteration, for $k = 0, \ldots , p -1$. This amounts to a total of 
+$$
+1 + \sum_{k=0}^{p-1}{(p-k)} = 1+p(p+1)/2 
+$$
+models. This is a substantial difference: when
+$p = 20$, best subset selection requires fitting $1,048,576$ models, whereas
+forward stepwise selection requires fitting only $211$ models.
+
+```{r}
+regfit.fwd=regsubsets(Salary~.,data=Hitters,nvmax=19,method="forward")
+#summary(regfit.fwd)
+regfit.bwd=regsubsets(Salary~.,data=Hitters,nvmax=19,method="backward")
+#summary(regfit.bwd)
+coef(regfit.full,7)
+coef(regfit.fwd,7)
+coef(regfit.bwd,7)
+
+regfit.sqr=regsubsets(Salary~.,data=Hitters,nvmax=19,method="seqrep")
+```
+
+* There is one more option *seqrep* for sequential replacement (an approach which considers both forward and backward steps)
+* The package leaps is VERY fast because it uses an "efficient branch-and-bound algorithm".
+
+### Visualization
+
+```{r, fig.height=10, fig.width=10, eval=TRUE}
+par(mfrow=c(2,2))
+plot(regfit.full, scale = "adjr2", main = "All Subsets")
+plot(regfit.fwd, scale = "adjr2", main = "Forward")
+plot(regfit.bwd, scale = "adjr2", main = "Backward")
+plot(regfit.sqr, scale = "adjr2", main = "sequential replacement")
+
+```
+
+
+# Choosing Among Models
+
+```{r}
+set.seed(1)
+train=sample(c(TRUE,FALSE), nrow(Hitters),rep=TRUE)
+test=(!train)
+regfit.best=regsubsets(Salary~.,data=Hitters[train,],nvmax=19)
+test.mat=model.matrix(Salary~.,data=Hitters[test,])
+val.errors=rep(NA,19)
+for(i in 1:19){
+   coefi=coef(regfit.best,id=i)
+   pred=test.mat[,names(coefi)]%*%coefi
+   val.errors[i]=mean((Hitters$Salary[test]-pred)^2)
+}
+val.errors
+which.min(val.errors)
+coef(regfit.best,10)
+
+```
+
+## Greedy Algorithms
+
+* In the computer science literature, stepwise approaches are known as **greedy algorithms**, in the sense that they operate according to grabbing the variable that will help most in the short term
+
+* However, just as this is not always the best strategy in other areas of life, there is no guarantee that the stepwise approach will find the best model
+
+## Task before moving on: Using a selection method of your choice find the best housing model and submit to kaggle !
+
+```{r,eval=TRUE}
+train <- read.csv("data/HousePrices/train.csv.gz")
+test <- read.csv("data/HousePrices/test.csv.gz")
+test$SalePrice = NA
+  
+setdiff(colnames(train), colnames(test))
+
+train = train[,intersect(colnames(train), colnames(test))]
+
+
+jj = is.na(train$SalePrice)
+train$SalePrice[jj] = mean(train$SalePrice, na.rm=TRUE)
+#remove NAs
+mv = colSums(sapply(train, is.na))
+train = train[,mv==0]
+
+# What is the size of the model.matrix ?
+tmp = model.matrix(SalePrice ~. , data=train)
+# remove factors
+xC = sapply(train, class)
+train = train[,xC != "factor"]
+       
+forward=regsubsets(log(SalePrice) ~.,data=train,nvmax=35,method="forward")
+fs = summary(forward)
+
+plot(fs$bic,xlab="Number of Variables",ylab="BIC",type='l')
+k=which.min(fs$bic)
+points(k,fs$bic[k],col="red",cex=2,pch=20)
+
+coefi=coef(forward,id=k)
+names(coefi)
+
+mm = model.matrix(SalePrice ~. , data=train)
+logpredsTrain =mm[,names(coefi)] %*% coefi
+
+names(coefi)[-1] %in% colnames(test)
+
+Id= test$Id
+test=test[,names(coefi)[-1]]
+
+
+MeanImpute = function(x){
+  for (i in which(colSums(is.na(test))>0)) {
+    jj = which(is.na(test[,i]))
+    test[jj,i] = mean(test[,i],na.rm=TRUE)
+  }  
+  return(test)
+}
+
+test = MeanImpute(test)
+
+mmTest = model.matrix( ~ . , data=test)
+logpredTest = mmTest %*% coefi
+
+
+subMiss = cbind.data.frame(Id= Id,SalePrice= exp(logpredTest))
+#write.csv(subMiss, "data/HousePrices/submission2.csv", quote=F, row.names = FALSE
+
+   
+
+
+
+```
+
+
+
+
+-----------------------------------------
+
+# Regularization: 
+
+
+Let us start with two quotes from **Kaggle chief scientist Jeremy Howard**:
+
+
+#### 1. "lasso and elastic-net regularized generalized linear models are fast, work on huge data sets, and avoid over-fitting automatically. They are available in the glmnet package in R."
+
+#### 2. "For black box prediction ensembles of decision trees have been the most successful general-purpose algorithm in modern times. For instance, most Kaggle competitions have at least one top entry that heavily uses this approach. This algorithm is very simple to understand, and is fast and easy to apply. It is available in the randomForest package in R."
+
+## Ridge Regression
+
+Recall our new penalty term in finding the coefficients $\beta_j$ the minimization
+
+$$
+\sum_{i=1}^n{\left( y_i - \beta_0 - \sum_{j=1}^p{\beta_j x_{ij}} \right)^2} + \lambda \sum_{j=1}^p{\beta_j^2} = RSS + \lambda \sum_{j=1}^p{\beta_j^2}
+$$
+
+Instead of obtaining **one** set of coefficients we have a dependency of $\beta_j$  on $\lambda$:
+
+```{r, echo=FALSE}
+knitr::include_graphics(file.path(FigDir,"RidgeCoefficients1.png"), dpi=100)
+```
+
+
+```{r}
+library(ISLR)
+data(Hitters)
+Hitters = na.omit(Hitters)
+
+x=model.matrix(Salary~.,Hitters)[,-1]
+y=Hitters$Salary
+set.seed(1)
+train=sample(1:nrow(x), nrow(x)/2)
+test=(-train)
+y.test=y[test]
+
+
+fit=lm(Salary~.,Hitters[train,])
+sqrt(mean((predict(fit,new=Hitters[-train,])-y.test)^2))
+
+library(glmnet)
+ grid=10^seq(5,-2,length=100)
+ ridge.mod=glmnet(x,y,alpha=0,lambda=grid)
+ 
+ plot(ridge.mod, xvar = "lambda");grid()
+ 
+```
+
+How do we know which variable is which ?
+Recall that $\lambda$ is decreasing with column index:
+
+
+```{r}
+dim(coef(ridge.mod))
+#View(as.matrix(coef(ridge.mod)))
+head(round(sort(coef(ridge.mod)[,100]),2))
+tail(round(sort(coef(ridge.mod)[,100]),2))
+```
+
+
+
+In general, finding the optimum $\lambda$ is best done 
+using cross-validation. We can do this using
+the built-in cross-validation function, cv.glmnet(). By default, the function
+*cv.glmnet()*
+performs ten-fold cross-validation, though this can be changed using the
+argument *nfolds*.
+
+```{r}
+set.seed(1)
+cv.out=cv.glmnet(x[train,],y[train],alpha=0)
+plot(cv.out)
+bestlam=cv.out$lambda.min
+bestlam
+ridge.pred=predict(ridge.mod,s=bestlam,newx=x[test,])
+mean((ridge.pred-y.test)^2)
+```
+
+
+This represents a further improvement over the test MSE that we got using
+$\lambda = 4$. Finally, we refit our ridge regression model on the full data set,
+using the value of $\lambda$ chosen by cross-validation, and examine the coefficient
+estimates.
+
+```{r}
+out=glmnet(x,y,alpha=0)
+predict(out,type="coefficients",s=bestlam)[1:20,]
+```
+
+None of the coefficients are zero; ridge regression does not
+perform variable selection!
+
+## The Lasso
+
+
+##### Detour: $L_p$ norms
+
+http://mathworld.wolfram.com/VectorNorm.html
+
+
+Our penalty termy looks slightly different (with big consequences for **sparsity**)
+
+$$
+\sum_{i=1}^n{\left( y_i - \beta_0 - \sum_{j=1}^p{\beta_j x_{ij}} \right)^2} + \lambda \sum_{j=1}^p{| \beta_j |} = RSS + \lambda \sum_{j=1}^p{| \beta_j |}
+$$
+
+```{r, echo=FALSE}
+knitr::include_graphics(file.path(FigDir,"LassoCoefficients1.png"), dpi=100)
+```
+
+The baseball data :
+
+```{r}
+
+lasso.mod=glmnet(x[train,],y[train],alpha=1,lambda=grid)
+plot(lasso.mod, xvar = "lambda");grid()
+```
+
+
+We can see from the coefficient plot that depending on the choice of tuning
+parameter, some of the coefficients will be exactly equal to zero. We now
+perform cross-validation and compute the associated test error.
+
+```{r}
+set.seed(1)
+cv.out=cv.glmnet(x[train,],y[train],alpha=1)
+plot(cv.out)
+bestlam=cv.out$lambda.min
+lasso.pred=predict(lasso.mod,s=bestlam,newx=x[test,])
+mean((lasso.pred-y.test)^2)
+```
+
+
+This is substantially lower than the test set MSE of the null model and of
+least squares, and very similar to the test MSE of ridge regression with $\lambda$
+chosen by cross-validation.
+However, the lasso has a substantial advantage over ridge regression in
+that the resulting coefficient estimates are sparse. Here we see that 12 of
+the 19 coefficient estimates are exactly zero. So the lasso model with $\lambda$
+chosen by cross-validation contains only seven variables.
+
+```{r}
+out=glmnet(x,y,alpha=1,lambda=grid)
+lasso.coef=predict(out,type="coefficients",s=bestlam)[1:20,]
+lasso.coef
+lasso.coef[lasso.coef!=0]
+
+```
+
+#### Let us test the sparsity enforcement by adding non informative columns:
+
+
+```{r}
+data(Hitters)
+Hitters = na.omit(Hitters)
+x=model.matrix(Salary~.,Hitters)[,-1]
+y=Hitters$Salary
+
+
+#add 1 noise column:
+#the below would work for data frames
+set.seed(1)
+noise=matrix(rnorm(5*263),ncol=5 )
+x = cbind(x, noise)
+#add any polynomial terms you like
+
+myFirstLassoFit =glmnet(x,y,alpha=1,lambda=grid)
+
+plot(myFirstLassoFit)
+
+coefs = as.matrix(coef(myFirstLassoFit))
+
+#COMMENT: sparse matrices often have their own class !!
+
+# 
+# x$n1 = rnorm(nrow(x))
+# x$n2 = rnorm(nrow(x))
+# x$n3 = rnorm(nrow(x))
+# x$n4 = rnorm(nrow(x))
+# x$n5 = rnorm(nrow(x))
+
+
+```
+
+
+
+## Elastic Net
+
+### The mystery of the additional $\alpha$ paramater 
+
+* The elastic net for correlated variables, which uses a penalty that is part L1, part L2.
+* Compromise between the ridge regression penalty $(\alpha = 0)$ and the lasso penalty $(\alpha = 1)$. 
+* This penalty is particularly useful in the $p >> N$ situation, or any situation where there are many correlated predictor variables.
+
+
+$$
+ RSS + \lambda \sum_{j=1}^p{ \left( \frac{1}{2} (1-\alpha) \beta_j^2 + \alpha | \beta_j | \right)}
+$$
+The right hand side can be written as
+$$
+  \sum_{j=1}^p{ \frac{1}{2} \lambda (1-\alpha) \beta_j^2 + \alpha \lambda | \beta_j |} = \sum_{j=1}^p{  \lambda_R \beta_j^2 +  \lambda_L | \beta_j |}
+$$
+with the Ridge penalty parameter $\lambda_R \equiv \frac{1}{2} \lambda (1-\alpha)$ and the lasso penalty parameter $\lambda_L \equiv \alpha \lambda$.
+So we see that with
+$$
+\alpha = \frac{\lambda_L}{\lambda_L+ 2 \lambda_R}, \mbox{ and } \lambda= \lambda_L+ 2 \lambda_R
+$$
+
+
+
+----------------------------------------
+
+
+### Exercise 1
+
+#### For the churn data, find the sparsest model with the best prediction on a hold out set. Compare with the full model. (BTW, does this data set look familiar at all ?)
+
+```{r, eval = FALSE}
+
+churn <- read.csv("data/churn.csv", stringsAs=TRUE)
+set.seed(1)
+train=sample( nrow(churn), 400)
+
+fitSmall = glm(Churn ~ CellPlan + Sex + Age, data = churn[train,], family = binomial)
+predSmall = predict(fitSmall, newdata = churn[-train,], type="response")
+(ConfMatSmall = table(predSmall>0.5,churn[-train,"Churn"]))
+(Accuracy = round(sum(diag(ConfMatSmall))/sum(ConfMatSmall) , 2))
+
+####big model:
+
+fitBig = glm(Churn ~ . , data = churn[train,-14], family = binomial)
+predBig = predict(fitBig, newdata = churn[-train,], type="response")
+(ConfMatBig = table(predBig>0.5,churn[-train,"Churn"]))
+(Accuracy = round(sum(diag(ConfMatBig))/sum(ConfMatBig) , 2))
+
+
+```
+
+
+### Exercise 2
+
+
+In this exercise, we will predict the number of applications received
+using the other variables in the College data set.
+
+1. Split the data set into a training set and a test set.
+2. Fit a linear model using least squares on the training set, and
+report the test error obtained.
+3. Fit a ridge regression model on the training set, with $\lambda$ chosen
+by cross-validation. Report the test error obtained.
+4. Fit a lasso model on the training set, with $\lambda$ chosen by crossvalidation.
+Report the test error obtained, along with the number
+of non-zero coefficient estimates.
+5. 
+
+
+
+### Many Variables
+
+https://www.kaggle.com/c/house-prices-advanced-regression-techniques/data
+
+https://www.kaggle.com/dsysoev/house-prices-advanced-regression-techniques/lasso-ridge-and-elasticnet-comparison
+
+
+```{r, eval=FALSE}
+train_HousePrices <- read_csv("H:/DropboxHWR/SS2017/AnalyticsLab/data/kaggle/HousePrices/train.csv.gz")
+```
+
+
+
+
+# Randomized Algorithms
+
+
+### Variance of Trees
+
+#### Titanic:
+
+```{r, fig.width = 10, fig.height=6}
+library(rpart)
+library(partykit, quietly = TRUE)
+#heart = read.csv("../data/Heart.csv")
+par(mfrow=c(2,2))
+train <- read.csv("data/TitanicTrain.csv")
+train$Survived = factor(train$Survived)
+train$Pclass = factor(train$Pclass)
+
+fit1=rpart(Survived ~ Sex + Age + Pclass,train)
+plot(as.party(fit1))
+
+set.seed(123)
+for ( i in 1:3) {
+  fit1=rpart(Survived ~ Sex + Age + Pclass,train[sample(1:nrow(train), nrow(train)/2),])
+  plot(as.party(fit1));#title("half data")
+}
+
+
+```
+
+#### Boston housing:
+
+```{r,  fig.width = 10, fig.height=6}
+library(MASS)
+data(Boston)
+par(mfrow=c(2,2))
+fit2=rpart(medv~.,Boston)
+plot(as.party(fit2));#title("all data")
+
+for ( i in 1:3) {
+  fit2=rpart(medv~.,Boston[sample(1:nrow(Boston), nrow(Boston)/2),])
+  plot(as.party(fit2));#title("half data")
+}
+
+```
+
+
+
+### The Bootstrap
+
+#### 1. Estimate Uncertainty:
+
+```{r, fig.width=12,fig.height=10}
+set.seed(1)
+N=100;x=list()
+#true parameters:
+mu=10;s=3;xx=mu + 3.5*seq(-s,s,length=100);
+xx2=mu + 3.5*seq(-s,s,length=N/10);dx=mean(diff(xx2));
+#xx3=mu + 3.5*seq(-s,s,length=N/10)/sqrt(N)
+
+par(mfrow=c(3,3),mar=rep(2,4), cex=1.75)
+for (i in 1:3) {
+  x[[i]] = rnorm(N,mu,s)
+  br = hist(x[[i]],main="", xlim = mu+3.5*c(-s,s), breaks = xx2);grid()
+  abline(v=c(mu,mean(x[[i]])), col = c("red", "green"))
+  #lines(xx, N*dx*dnorm(xx,mu,s),col=2,lwd=1.5)
+}
+B=500
+REPL=c(TRUE,TRUE)
+for (j in 1:2) {
+  for (i in 1:3) {
+    xm=mean(x[[i]])
+    ym = vector()
+    for (k in 1:B) {
+      y = sample(x[[i]],N,replace= REPL[j])
+      ym[k] = mean(y)
+    }
+    xx3=xm + 3.5*seq(-s,s,length=N/10)/sqrt(N)
+    hist(ym,main="", xlim = xm+3.5*c(-s,s)/sqrt(N), breaks=xx3);grid()
+    abline(v=c(mu,xm), col = c("red", "green"))
+    xx3=xm + 3.5*seq(-s,s,length=N)/sqrt(N)
+    lines(xx3, B*dx/sqrt(N)*dnorm(xx3,xm,s/sqrt(N)),col=2,lwd=1.5)
+    #text("topright", labels=paste("s=",round(sd(ym),1)))
+  }
+}
+
+
+```
+
+```{r, eval=TRUE}
+#data(Default)
+#down sample:
+set.seed(1)
+#Default = Default[sample(10^4, 10^3),]
+  
+library(boot)
+B=500#too small but good for Rmd compilation
+
+
+boot.fn=function(data,index)
+  coefficients(lm(medv~ rm +lstat +crim+dis,data=data,subset=index))
+ #coefficients(lm(mpg~horsepower+I(horsepower^2),data=data,subset=index))
+#set.seed(1)
+boot.fn(Boston,1:nrow(Boston))
+boot.fn(Boston,sample(506))
+boot(Boston,boot.fn,B)
+summary(lm(medv~ rm +lstat +crim+dis,data=Boston))$coef
+
+```
+
+#### 2. Lower Variance
+
+
+Write code which 
+(i)   "bootstraps your data" (samples N times with replacement)
+(ii)  estimate model on these data
+(iii) predict on the left-out ("out-of-bag")
+
+This is the last Codeathon of 2016
+
+```{r, eval=F}
+#Overhead code
+train <- read.csv("../data/TitanicTrain.csv")
+train$Survived = factor(train$Survived)
+train$Pclass = factor(train$Pclass)
+N = nrow(train)
+
+InBagFit = list()
+
+B = 500
+OOBpreds = matrix(NA,ncol=B,nrow=N)
+for (i in 1:500){
+  #(i)   "bootstraps your data" (samples N times with replacement)
+  xBoot = sample(N,N,TRUE)
+  #(ii)  estimate model on these data
+  InBagFit[[i]] =rpart(Survived ~ Sex + Age + Pclass, train, subset=xBoot)
+  #(iii) predict on the left-out ("out-of-bag")
+  OOBindex = (1:N)[-unique(xBoot)]
+  OOBdata = train[OOBindex,]
+  #OOBdata = train[which(!(1:N) %in% xBoot),]
+  OOBpreds[OOBindex,i]=predict(InBagFit[[i]],newdata=OOBdata, type="class")
+  #passID[[i]] = OOBindex
+  #AlignedPreds[[i]] =cbind(OOBpreds[[i]],passID[[i]])
+  
+}
+#1 Solution; unlist
+
+BaggedPreds = rowMeans(OOBpreds, na.rm=TRUE) > 1.5
+
+
+# AllPreds = unlist(OOBpreds)
+# AllIDs = unlist(passID)
+# 
+# 
+# for (i in 1:500){
+#   preds=OOBpreds[[i]]
+#   for (j in 1:length(preds)){
+#     preds[passID[[i]][j]]
+#   }
+# }
+
+#OOBloss = average OOBpreds
+ 
+ 
+
+```
+
+
+## From bagged trees to random Forests
+
+Bagged trees are already forests but we need one more ingredient to make them **random**.
+
+
+
+```{r,eval=FALSE}
+library(randomForest)
+
+fit = randomForest(Survived ~ Sex + Age + Pclass, na.omit(train), ntrees= 500, mtry=2)
+
+# can we get an estimate of quality/performance ??
+# it comes for free !!!
+# no cross validation necessary
+# OOB error
+fit$confusion
+
+#plot(fit)
+```
+
+
+
+
+
+# Appendix
+
+## model.matrix and matrix multiplication
+
+```{r,eval=FALSE}
+mm = model.matrix(Churn ~ ., data = churn[train,-14])#28 columns
+dim(mm)
+```
+
+
+
+```{r}
+library(ISLR)
+data(Hitters)
+Hitters=na.omit(Hitters)
+
+SalaryModel = lm(Salary~ Hits + PutOuts + CRBI,data=Hitters)
+head(predict(SalaryModel))
+
+library(dplyr)
+SalaryModel$coef
+head(select(Hitters, Hits, PutOuts, CRBI))
+
+(CoefTimesData = SalaryModel$coef * c(1, as.matrix(Hitters[1, c("Hits", "PutOuts", "CRBI")])) )
+
+sum(CoefTimesData)
+
+```
+
+## heart disease data
+
+https://statweb.stanford.edu/~tibs/ElemStatLearn/datasets/SAheart.info.txt
+
+A retrospective sample of males in a heart-disease high-risk region
+of the Western Cape, South Africa. There are roughly two controls per
+case of CHD. Many of the CHD positive men have undergone blood
+pressure reduction treatment and other programs to reduce their risk
+factors after their CHD event. In some cases the measurements were
+made after these treatments. These data are taken from a larger
+dataset, described in  Rousseauw et al, 1983, South African Medical
+Journal. 
+
+sbp		systolic blood pressure
+tobacco		cumulative tobacco (kg)
+ldl		low density lipoprotein cholesterol
+adiposity
+famhist		family history of heart disease (Present, Absent)
+typea		type-A behavior
+obesity
+alcohol		current alcohol consumption
+age		age at onset
+chd		response, coronary heart disease
+
+To read into R:
+read.table("http://www-stat.stanford.edu/~tibs/ElemStatLearn/datasets/SAheart.data",
+	sep=",",head=T,row.names=1)
+	
+
+
+
