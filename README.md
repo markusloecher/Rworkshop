@@ -114,3 +114,27 @@ Be prepared to wait a while, lots of dependent packages are being installed as w
 [my blog](https://blog.hwr-berlin.de/codeandstats/ "blog")
 
 [my RgoogleMaps package](http://rgooglemaps.r-forge.r-project.org/ "RgoogleMaps on Rforge")
+
+### Ressources
+
+-   Main book
+-   <http://www-bcf.usc.edu/~gareth/ISL/>
+-   <https://www.r-bloggers.com/in-depth-introduction-to-machine-learning-in-15-hours-of-expert-videos/>
+-   Alternative books
+    -   Data Science <https://www.manning.com/books/practical-data-science-with-r> Make Your Own Neural Network (Tariq Rashid) Statistics Andy Field, Jeremy Miles, Zoe Field (2012), Discovering Statistics Using R, SAGE <https://uk.sagepub.com/en-gb/eur/discovering-statistics-using-r/book236067> <https://www.openintro.org/stat/> <http://onlinestatbook.com/>
+-   Useful MOOCs
+    -   Statistics
+
+            https://classroom.udacity.com/courses/st101
+            Intro to Descriptive Statistics: https://www.udacity.com/course/intro-to-descriptive-statistics--
+            ud827
+            Intro to Inferential Statistics: https://www.udacity.com/course/intro-to-inferential-statistics--ud201
+
+-   R Programming <https://www.coursera.org/learn/r-programming/> Machine Learning <https://www.coursera.org/learn/machine-learning>
+
+-   Why R is still one of the best data science language to learn today
+
+        http://sharpsightlabs.com/blog/r-recommend-data-science/
+        https://stackoverflow.blog/2017/10/10/impressive-growth-r/
+
+-   Ethical Issues in Machine Learning: <https://www.propublica.org/series/machine-bias> Fairness of algorithms Equality of Opportunity in Supervised Learning Photo Categorization <http://www.wnyc.org/story/deep-problem-deep-learning/> <https://www.forbes.com/sites/mzhang/2015/07/01/google-photos-tags-two-african-americans-as-gorillas-through-facial-recognition-software/>
